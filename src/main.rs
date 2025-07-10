@@ -21,7 +21,6 @@ use reqwest;
 
 mod error;
 
-
 #[tokio::main]
 async fn main() {
 	let app = Router::new()
@@ -43,25 +42,33 @@ async fn main() {
 	axum::serve(listener, app).await.unwrap();
 }
 
-async fn publications(body: String) -> impl IntoResponse {
-	let json_body: serde_json::Value = serde_json::from_str(&body).expect("JSON is broken");
+async fn publications(body: String) -> Result<impl IntoResponse, error::AppError> {
+	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
 	let date = json_body["date"].as_str().unwrap_or("");
 	let amount = json_body["amount"].as_u64().unwrap_or(30);
 
 	let client = reqwest::Client::new();
-	let body = client.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
+	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
 		.body(format!("{{\"editions\": [{{\"defId\": 1134,\"publicationDate\": \"{date}\"}}],\"maxHits\": {amount},\"startDate\": \"{date}\"}}"))
-		.send().await;
-	
-	println!("{:?}", body);
+		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
 
-	return match body {
-		Ok(res) => (StatusCode::OK, res.text().await.unwrap_or("Can't read response".to_string())),
-		Err(e) => (StatusCode::NOT_FOUND, e.to_string()),
-	};
+	let empty = vec![];
+	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(error::map_serde_error)?;
+	let pages = json_obj["data"].as_array().unwrap_or(&empty);
+	let mut dates = vec![];
+
+	for page in pages.iter() {
+		let date = page["pages"][0]["publicationDate"].as_str().unwrap_or("");
+		dates.push(date.to_string());
+	}
+
+	let dates_string = serde_json::to_string(&dates).map_err(error::map_serde_error)?;
+	
+	return Ok((StatusCode::OK, dates_string));
+
 }
 
-async fn pages(body: String) -> Result<impl IntoResponse, (StatusCode, String)> {
+async fn pages(body: String) -> Result<impl IntoResponse, error::AppError> {
 	let request: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
 	let date = request["date"].as_str().unwrap_or("");
 
@@ -80,10 +87,11 @@ async fn pages(body: String) -> Result<impl IntoResponse, (StatusCode, String)> 
 		images.push(image.to_string());
 	}
 
-	return Ok((StatusCode::OK, body));
+	let image_string = serde_json::to_string(&images).map_err(error::map_serde_error)?;
+
+	return Ok((StatusCode::OK, image_string));
 }
 
 async fn health() -> StatusCode {
 	return StatusCode::OK;
 }
-
