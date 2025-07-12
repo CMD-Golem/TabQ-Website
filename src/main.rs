@@ -23,8 +23,10 @@ mod error;
 
 #[tokio::main]
 async fn main() {
+	tracing_subscriber::fmt::init();
+
 	let app = Router::new()
-		.route_service("/", ServeDir::new("static"))
+		.layer(TraceLayer::new_for_http())
 		.route("/api/health", get(health))
 		.route("/api/1/publications", post(publications))
 		.route("/api/1/pages", post(pages))
@@ -34,7 +36,8 @@ async fn main() {
 				.allow_headers([header::CONTENT_TYPE])
 				.allow_methods([Method::GET, Method::POST])
 		)
-		.layer(TraceLayer::new_for_http());
+		
+		.fallback_service(ServeDir::new("static"));
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 	// let addr = SocketAddr::from(([0, 0, 0, 0], 3000)); // docker
