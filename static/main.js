@@ -123,8 +123,8 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 	// prevent to much requests
 	else if (loop_fix >= 3) return;
 	// fetch again if not, dependend if it needs to be newer or not
-	else if (needs_newer) findDate(date.setDate(date.getDate() + fetch_amount * 7), week, fetch_amount, loop_fix);
-	else findDate(date.setDate(date.getDate() - fetch_amount * 7), week, fetch_amount, loop_fix);
+	else if (needs_newer) findDate(fetch_date.setDate(fetch_date.getDate() + fetch_amount * 7), week, fetch_amount, loop_fix);
+	else findDate(fetch_date.setDate(fetch_date.getDate() - fetch_amount * 7), week, fetch_amount, loop_fix);
 }
 
 
