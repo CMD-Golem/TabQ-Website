@@ -83,13 +83,8 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 	// fetch data
 	var fetch_date = new Date(date);
 
-	var month_number = fetch_date.getMonth();
-	if (month_number <= 9) var month = "0" + (month_number + 1).toString();
-	else var month = month_number.toString();
-
-	var day_number = fetch_date.getDate();
-	if (day_number <= 9) var day = "0" + day_number.toString();
-	else var day = day_number.toString();
+	var month = (fetch_date.getMonth() + 1).toString().padStart(2, "0");
+	var day = fetch_date.getDate().toString().padStart(2, "0");
 
 	var publications_load = await fetch("/api/1/publications", {
 		method: "POST",
