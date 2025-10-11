@@ -12,6 +12,15 @@ function load() {
 		el_year.appendChild(element);
 		current_year--;
 	}
+
+	// get last selected
+	var selected_storage = window.localStorage.getItem("selected_week");
+	if (selected_storage != null) {
+		var selected = selected_storage.split("-");
+		getWeeks(selected[0]);
+		el_year.value = selected[0];
+		el_week.value = selected[1];
+	}
 }
 
 load();
@@ -49,6 +58,7 @@ async function loadCoop() {
 	var year = el_year.value;
 	var week = el_week.value;
 	var fetch_amount = 5;
+	window.localStorage.setItem("selected_week", `${year}-${week}`);
 
 	// get publication date
     var date = new Date(year, 0, 4);
@@ -126,7 +136,10 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 async function loadMigros() {
 	// 	List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
 	el_main.innerHTML = "";
-	var magazin_load = await fetch(`https://reader3.isu.pub/m-magazin/migros-magazin-${el_week.value}-${el_year.value}-d-os/reader3_4.json`);
+	var year = el_year.value;
+	var week = el_week.value;
+	window.localStorage.setItem("selected_week", `${year}-${week}`);
+	var magazin_load = await fetch(`https://reader3.isu.pub/m-magazin/migros-magazin-${week}-${year}-d-os/reader3_4.json`);
 
 	if (magazin_load.status != 200) {
 		console.error(magazin_load);
