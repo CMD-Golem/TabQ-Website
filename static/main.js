@@ -54,10 +54,13 @@ function getWeeks(year) {
 }
 
 async function loadCoop() {
-	el_main.innerHTML = "";
 	var year = el_year.value;
 	var week = el_week.value;
 	var fetch_amount = 5;
+
+	if (year == "" || week == "") return;
+
+	el_main.innerHTML = "";
 	window.localStorage.setItem("selected_week", `${year}-${week}`);
 
 	// get publication date
@@ -134,11 +137,15 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 
 
 async function loadMigros() {
-	// 	List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
-	el_main.innerHTML = "";
 	var year = el_year.value;
 	var week = el_week.value;
+
+	if (year == "" || week == "") return;
+
+	el_main.innerHTML = "";
 	window.localStorage.setItem("selected_week", `${year}-${week}`);
+
+	// 	List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
 	var magazin_load = await fetch(`https://reader3.isu.pub/m-magazin/migros-magazin-${week}-${year}-d-os/reader3_4.json`);
 
 	if (magazin_load.status != 200) {
