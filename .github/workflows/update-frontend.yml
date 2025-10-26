@@ -1,0 +1,26 @@
+name: Update Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Archive frontend folder
+        run: |
+          zip -r frontend.zip frontend
+
+      - name: Send frontend to backend
+        run: |
+          curl -X POST https://tabq.ch/workflow/refresh-frontend/ \
+            -H "X-Hub-Signature-256: $(echo -n @frontend.zip | openssl dgst -sha256 -hmac "${{ secrets.FRONTEND_UPDATE_SECRET }}" | cut -d' ' -f2)" \
+            -H "Content-Type: application/zip" \
+            --data-binary @frontend.zip

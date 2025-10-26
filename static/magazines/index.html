@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Magazin</title>
+	<script defer src="main.js"></script>
+	
+	<style>
+		body {
+			background-color: black;
+			width: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		select {
+			max-height: 100px;
+		}
+
+		main {
+			display: block;
+		}
+
+		main:has(img) {
+			margin: 10px auto;
+			max-width: 666px;
+		}
+
+		main img {
+			width: 100%;
+		}
+
+		iframe {
+			width: 100%;
+			height: 100vh;
+			border: none;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<select id="year" onchange="getWeeks(this.value)">
+			<option value="false" style="display: none;" selected>select</option>
+		</select>
+		<select id="week"></select>
+
+		<button onclick="loadCoop()">Coop</button>
+		<button onclick="loadMigros()">Migros</button>
+	</header>
+	<main></main>
+</body>
+</html>

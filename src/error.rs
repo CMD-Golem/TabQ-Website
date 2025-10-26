@@ -4,35 +4,48 @@ use axum::{
 };
 use serde_json;
 use reqwest;
+use http;
+use zip;
 
-pub struct AppError {
-	pub status: StatusCode,
-	pub body: String
+pub fn generic_unauthorized_error(err: &str) -> Response {
+	let body = err.to_string();
+
+	println!("{body}");
+	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
 }
 
-impl IntoResponse for AppError {
-	fn into_response(self) -> Response {
-		(self.status, self.body).into_response()
-	}
+pub fn map_http_error(err: http::header::ToStrError) -> Response {
+	let body = err.to_string();
+
+	println!("{body}");
+	return (StatusCode::UNAUTHORIZED, body).into_response();
 }
 
-pub fn map_reqwest_error(err: reqwest::Error) -> AppError {
-	println!("Reqwest err");
+pub fn map_reqwest_error(err: reqwest::Error) -> Response {
 	let status = err.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-	let body = format!("{}, Reqwest er", err.to_string());
+	let body = err.to_string();
 
-	return AppError {
-		status: status,
-		body: body
-	};
+	println!("{body}");
+	return (status, body).into_response();
 }
 
-pub fn map_serde_error(err: serde_json::Error) -> AppError {
-	println!("Serde err");
-	let body = format!("{}, Serde er", err.to_string());
+pub fn map_serde_error(err: serde_json::Error) -> Response {
+	let body = err.to_string();
 
-	return AppError {
-		status: StatusCode::INTERNAL_SERVER_ERROR,
-		body: body
-	};
+	println!("{body}");
+	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
+}
+
+pub fn map_zip_error(err: zip::result::ZipError) -> Response {
+	let body = err.to_string();
+
+	println!("{body}");
+	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
+}
+
+pub fn map_path_error(err: std::io::Error) -> Response {
+	let body = err.to_string();
+
+	println!("{body}");
+	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
 }

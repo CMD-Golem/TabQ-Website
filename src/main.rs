@@ -1,95 +1,68 @@
 use axum::{
-	http::StatusCode,
-	response::IntoResponse,
-	routing::post,
+	http::{StatusCode, Request},
 	routing::get,
-	Router
+	middleware,
+	Router,
+	body::Body,
+	response::Response
 };
-use serde::Serialize;
-use http::HeaderMap;
-use std::net::SocketAddr;
-use tower_http::services::ServeDir;
-use serde_json;
+use tower_http::services::{
+	ServeDir,
+	ServeFile
+};
+use std;
 use tokio;
-use reqwest;
 
+mod magazines;
+mod workflow;
 mod error;
 
-#[derive(Serialize)]
-struct Magazines {
-	edition_number: u64,
-	edition_volume: u64,
-	publication_date: String,
-}
 
 #[tokio::main]
 async fn main() {
-	let app = Router::new()
-		.route("/api/health", get(health))
-		.route("/api/1/publications", post(publications))
-		.route("/api/1/pages", post(pages))
-		.fallback_service(ServeDir::new("static"));
+	let api = Router::new()
+		.nest("/magazines", magazines::router().await)
+		.nest("/workflow", workflow::router().await)
+		.route("/health", get(health));
 
-	let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+	let frontend = Router::new()
+		.fallback_service(
+			ServeDir::new("static")
+			.not_found_service(ServeFile::new("static/404.html"))
+		)
+		.layer(middleware::from_fn(log_static));
+
+	let app = Router::new()
+		.nest("/api", api)
+		.merge(frontend);
+
+	let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
 	let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 	axum::serve(listener, app).await.unwrap();
 }
 
-async fn publications(headers: HeaderMap, body: String) -> Result<impl IntoResponse, error::AppError> {
-	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
-	let date = json_body["date"].as_str().unwrap_or("");
-	let amount = json_body["amount"].as_u64().unwrap_or(5);
+async fn log_static(req: Request<Body>, next: middleware::Next) -> Response {
+	let path = req.uri().path().to_string();
+	let referrer = req.headers().get("User-Agent").and_then(|value| value.to_str().ok()).unwrap_or("Unknow User-Agent").to_string();
+	let client = req.headers().get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client").to_string();
 
-	println!("{} fetched publications", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
+	let response = next.run(req).await;
 
-	let client = reqwest::Client::new();
-	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
-		.body(format!("{{\"editions\": [{{\"defId\": 1134,\"publicationDate\": \"{date}\"}}],\"maxHits\": {amount},\"startDate\": \"{date}\"}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
-
-	let empty = vec![];
-	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(error::map_serde_error)?;
-	let pages = json_obj["data"].as_array().unwrap_or(&empty);
-	let mut response = vec![];
-
-	for page in pages.iter() {
-		let number = page["pages"][0]["editionNumber"].as_u64().unwrap_or(0);
-		let volume = page["pages"][0]["editionVolume"].as_u64().unwrap_or(0);
-		let date = page["pages"][0]["publicationDate"].as_str().unwrap_or("");
-		let obj = Magazines {edition_number: number, edition_volume: volume, publication_date: date.to_string()};
-		response.push(obj);
+	if ! matches!(
+		response.headers().get("content-type").and_then(|v| v.to_str().ok()),
+		Some(s) if s.starts_with("text/html")
+	) {
+		return response;
 	}
 
-	let response_string = serde_json::to_string(&response).map_err(error::map_serde_error)?;
-	
-	return Ok((StatusCode::OK, response_string));
-
-}
-
-async fn pages(headers: HeaderMap, body: String) -> Result<impl IntoResponse, error::AppError> {
-	let request: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
-	let date = request["date"].as_str().unwrap_or("");
-
-	println!("{} fetched pages", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
-
-	let client = reqwest::Client::new();
-	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/getPages")
-		.body(format!("{{\"screenInfo\":{{\"width\":1155,\"height\":1060}},\"editions\":[{{\"defId\":1134,\"publicationDate\":\"{date}\"}}]}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
-
-	let empty = vec![];
-	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(error::map_serde_error)?;
-	let pages = json_obj["data"]["pages"].as_array().unwrap_or(&empty);
-	let mut images = vec![];
-
-	for page in pages.iter() {
-		let image = page["pageDocUrl"]["PREVIEW"]["url"].as_str().unwrap_or("");
-		images.push(image.to_string());
+	if response.status().is_success() {
+		println!("{path} {referrer}");
+	}
+	else {
+		println!("Failed to serve {path} {client} {referrer}");
 	}
 
-	let image_string = serde_json::to_string(&images).map_err(error::map_serde_error)?;
-
-	return Ok((StatusCode::OK, image_string));
+	return response;
 }
 
 async fn health() -> StatusCode {

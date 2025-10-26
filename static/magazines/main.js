@@ -72,7 +72,7 @@ async function loadCoop() {
 	if (publication == undefined) return;
 
 	// fetch  and show images
-	var magazin_load = await fetch("/api/1/pages", {
+	var magazin_load = await fetch("/api/magazines/pages", {
 		method: "POST",
 		body: `{"date":"${publication}"}`,
 	});
@@ -99,7 +99,7 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 	var month = (fetch_date.getMonth() + 1).toString().padStart(2, "0");
 	var day = fetch_date.getDate().toString().padStart(2, "0");
 
-	var publications_load = await fetch("/api/1/publications", {
+	var publications_load = await fetch("/api/magazines/publications", {
 		method: "POST",
 		body: `{"date":"${fetch_date.getFullYear()}-${month}-${day}", "amount":${fetch_amount}}`,
 	});
