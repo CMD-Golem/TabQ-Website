@@ -22,7 +22,44 @@ body {
 	padding: var(--padding);
 	max-width: calc(var(--cols) * 100px);
 	margin: 0 auto;
-	margin-bottom: var(--padding);
+}
+
+.shortcut_spacer {
+	display: block;
+	width: calc(100% - 40px);
+	max-width: calc(var(--cols) * 100px);
+	margin: 0 auto;
+	height: 20px;
+	position: relative;
+}
+.shortcut_spacer::after {
+	content: "Create new Group";
+	position: absolute;
+	top: 4px;
+	width: 150px;
+	font-size: smaller;
+	text-align: center;
+	left: calc(50% - 75px);
+	display: none;
+}
+
+#delete_element {
+	height: 40px;
+	width: 40px;
+	border-radius: 50%;
+	position: fixed;
+	top: 5px;
+	left: calc(50vw - 20px);
+	display: none;
+	background-color: darkred;
+}
+
+.started_dragging #delete_element, .started_dragging .shortcut_spacer::after {
+	display: block !important;
+}
+
+.shortcut_spacer a.draggable_element, #delete_element a.draggable_element {
+	display: none;
 }
 
 a.draggable_element {

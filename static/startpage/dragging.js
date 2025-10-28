@@ -1,10 +1,14 @@
 var dragging_clone;
 var pointer_pos = {x:0, y:0, ox:0, oy:0};
-var selected_elements_list = [];
+var target_store = {};
 
 function dragStart(e) {
 	var target = e.currentTarget;
 	body.classList.add("started_dragging");
+
+	var startpage_container = document.querySelectorAll(".startpage_container");
+	target_store.index = Array.from(target.parentNode.children).indexOf(target);
+	target_store.old_parent_id = Array.from(startpage_container).indexOf(target.parentElement);
 
 	// create dragging clone
 	dragging_clone = target.cloneNode(true);
@@ -24,7 +28,6 @@ function dragStart(e) {
 		pointer_pos.oy = e.touches[0].clientY - bounding_rect.top;
 		dragging_clone.style.opacity = 0.7;
 	}
-	
 
 	// fixe chromium bug
 	setTimeout((target) => {
@@ -47,15 +50,54 @@ function dragEnd(e) {
 	body.classList.remove("started_dragging");
 	dragging_clone.remove();
 
-	// delete empty groups
+	// delete empty groups /* Doesnt work yet */
 	var drag_containers = document.querySelectorAll(".drag_container");
 	for (var i = 0; i < drag_containers.length; i++) {
-		if (drag_containers[i].children.length == 0) {
+		if (drag_containers[i].children.length == 0 && target.parentElement.id != "delete_element" && !target.parentElement.classList.contains("drag_create_container")) {
 			drag_containers[i].remove();
+			drag_containers[i].nextElementSibling.remove();
 		}
 	}
 
-	// insert selected elements again
+	// custom handling
+	var json = window.localStorage.getItem("user_data");
+	var data = JSON.parse(json);
+
+	if (target.parentElement.id == "delete_element") {
+		// delete element
+		target.remove();
+		changeContainerData(data, target_store, null, 0);
+		return;
+	}
+	else if (target.parentElement.classList.contains("drag_create_container")) {
+		// create new container
+		var new_parent_obj = {type:"shortcuts", styles:{cols:4, backgroundColor:"#2d2d38"}, content:[]};
+
+		var {container, spacer} = createContainer(new_parent_obj);
+		target.remove();
+		body.insertBefore(container, target.parentElement);
+		body.insertBefore(spacer, container.previousElementSibling);
+		container.append(target);
+
+		var startpage_container = document.querySelectorAll(".startpage_container");
+		var new_container_index = Array.from(startpage_container).indexOf(container);
+		data.elements.splice(new_container_index, 0, new_parent_obj);
+
+		console.log(new_container_index)
+
+		changeContainerData(data, target_store, new_parent_obj, 0);
+	}
+	else {
+		// store new position in local storage
+		var startpage_container = document.querySelectorAll(".startpage_container");
+		var new_parent_index = Array.from(startpage_container).indexOf(target.parentElement);
+		var new_index = Array.from(target.parentElement.children).indexOf(target);
+		var new_parent_obj = data.elements[new_parent_index];
+
+		changeContainerData(data, target_store, new_parent_obj, new_index);
+	}
+
+	// animation
 	var elements = target.parentElement.querySelectorAll(".draggable_element:not(.dragging)");
 	var element_positions = new Map();
 
@@ -69,7 +111,7 @@ function dragEnd(e) {
 
 async function dragOver(e) {
 	e.preventDefault();
-
+	
 	// only run if position changed
 	if (Math.abs(pointer_pos.x - e.clientX) > 5 || Math.abs(pointer_pos.y - e.clientY) > 5) {
 		pointer_pos.x = e.clientX;
@@ -96,7 +138,8 @@ async function dragOver(e) {
 	var element_positions = new Map();
 
 	// append directly if no other elements in container
-	if (not_dragging.length == 0) {
+	// append it for container creation and elemente delete area
+	if (not_dragging.length == 0 || container.id == "delete_element" || container.classList.contains("drag_create_container")) {
 		container.appendChild(dragging);
 		return;
 	}
