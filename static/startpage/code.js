@@ -1,5 +1,9 @@
 var body = document.querySelector("body");
 
+const classMap = {
+	Shortcut
+};
+
 function loadData() {
 	var json = window.localStorage.getItem("user_data");
 	if (json == null) return;
@@ -14,58 +18,87 @@ function loadData() {
 	delete_element.addEventListener("dragover", dragOver);
 	delete_element.addEventListener("touchmove", dragOver);
 
+	// add styles and init
+	for (var [_, value] of Object.entries(classMap)) value.init();
+
 	// insert elements
 	for (var i = 0; i < data.elements.length; i++) {
-		if (data.elements[i].type == "shortcuts") insertShortcuts(data.elements[i]);
+		var defiend_class = classMap[data.elements[i].type];
+		var container = defiend_class.load(data.elements[i]);
+		var spacer = createSpacer();
+
+		body.appendChild(container);
+		body.appendChild(spacer);
 	}
 }
 loadData();
 
-function insertShortcuts(element) {
-	var {container, spacer} = createContainer(element);
+function createSpacer() {
+	var spacer = document.createElement("div");
+	spacer.classList.add("spacer", "drag_create_container");
 
-	for (var i = 0; i < element.content.length; i++) {
-		var link_data = element.content[i];
+	return spacer;
+}
 
-		var link = document.createElement("a");
-		link.href = link_data.link;
-		link.innerHTML = `<img src="${link_data.logo}"><p>${link_data.name}</p>`;
-		link.classList.add("draggable_element");
-		link.addEventListener("dragstart", dragStart);
-		link.addEventListener("dragend", dragEnd);
-		link.addEventListener("touchstart", dragStart);
-		link.addEventListener("touchend", dragEnd);
-
-		container.appendChild(link);
+// ##################################################
+// edit function
+function startEdit() {
+	var spacers = document.querySelectorAll(".spacer");
+	for (var i = 0; i < spacers.length; i++) {
+		spacers[i].classList.add("drag_container");
+		spacers[i].addEventListener("dragover", dragOver);
+		spacers[i].addEventListener("touchmove", dragOver);
 	}
 
-	body.appendChild(container);
-	body.appendChild(spacer);
+	var startpage_containers = document.querySelectorAll(".startpage_container");
+	for (var i = 0; i < startpage_containers.length; i++) {
+		var class_name = startpage_containers[i].getAttribute("data-class");
+		var defiend_class = classMap[class_name];
+		defiend_class.startEdit(startpage_containers[i]);
+	}
 }
 
-function createContainer(element) {
-	var container = document.createElement("div");
-	container.classList.add("shortcut_container", "drag_container", "startpage_container");
-	container.addEventListener("dragover", dragOver);
-	container.addEventListener("touchmove", dragOver);
-	container.style.setProperty("--cols", element.styles.cols);
-	container.style.setProperty("background-color", element.styles.backgroundColor);
+function stopEdit() {
+	var spacers = document.querySelectorAll(".spacer");
+	for (var i = 0; i < spacers.length; i++) {
+		spacers[i].classList.remove("drag_container");
+		spacers[i].removeEventListener("dragover", dragOver);
+		spacers[i].removeEventListener("touchmove", dragOver);
+	}
 
-	var spacer = document.createElement("div");
-	spacer.classList.add("shortcut_spacer", "drag_create_container");
-	spacer.addEventListener("dragover", dragOver);
-	spacer.addEventListener("touchmove", dragOver);
-
-	return {container, spacer};
+	var startpage_containers = document.querySelectorAll(".startpage_container");
+	for (var i = 0; i < startpage_containers.length; i++) {
+		var class_name = startpage_containers[i].getAttribute("data-class");
+		var defiend_class = classMap[class_name];
+		defiend_class.stopEdit(startpage_containers[i]);
+	}
 }
 
-function changeContainerData(data, target_store, new_parent_obj, new_index) {
-	var old_parent_obj = data.elements[target_store.old_parent_id];
-	var obj = old_parent_obj.content[target_store.index];
+function changeContainerData(data, target_store, new_container_index, new_element_index) {
+	var old_container_obj = data.elements[target_store.container_index];
+	var element_obj = old_container_obj.content[target_store.element_index];
 
-	old_parent_obj.content.splice(target_store.index, 1);
-	if (old_parent_obj.content.length == 0) data.elements.splice(target_store.old_parent_id, 1);
-	new_parent_obj?.content.splice(new_index, 0, obj);
+	// remove element from old container
+	old_container_obj.content.splice(target_store.element_index, 1);
+
+	// remove empty container
+	if (old_container_obj.content.length == 0) data.elements.splice(target_store.container_index, 1);
+
+	// get new container
+	var new_container_obj = data.elements[new_container_index];
+
+	// create new container
+	if (new_element_index == null) {
+		var defiend_class = classMap[old_container_obj.type];
+
+		new_container_obj = structuredClone(defiend_class.default_obj);
+		data.elements.splice(new_container_index, 0, new_container_obj);
+		new_element_index = 0;
+	}
+	// add element to new container if it exists
+	if (new_container_index != null) {
+		new_container_obj.content.splice(new_element_index, 0, element_obj);
+	}
 
 	window.localStorage.setItem("user_data", JSON.stringify(data));
 }

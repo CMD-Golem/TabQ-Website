@@ -6,9 +6,10 @@ function dragStart(e) {
 	var target = e.currentTarget;
 	body.classList.add("started_dragging");
 
-	var startpage_container = document.querySelectorAll(".startpage_container");
-	target_store.index = Array.from(target.parentNode.children).indexOf(target);
-	target_store.old_parent_id = Array.from(startpage_container).indexOf(target.parentElement);
+	// store current container
+	var startpage_containers = document.querySelectorAll(".startpage_container");
+	target_store.element_index = Array.from(target.parentElement.children).indexOf(target);
+	target_store.container_index = Array.from(startpage_containers).indexOf(target.parentElement);
 
 	// create dragging clone
 	dragging_clone = target.cloneNode(true);
@@ -50,53 +51,57 @@ function dragEnd(e) {
 	body.classList.remove("started_dragging");
 	dragging_clone.remove();
 
-	// delete empty groups /* Doesnt work yet */
+	// delete empty groups
 	var drag_containers = document.querySelectorAll(".drag_container");
 	for (var i = 0; i < drag_containers.length; i++) {
-		if (drag_containers[i].children.length == 0 && target.parentElement.id != "delete_element" && !target.parentElement.classList.contains("drag_create_container")) {
-			drag_containers[i].remove();
+		if (drag_containers[i].children.length == 0 && !drag_containers[i].classList.contains("drag_create_container")) {
 			drag_containers[i].nextElementSibling.remove();
+			drag_containers[i].remove();
 		}
 	}
 
+	// ########################################################################################
 	// custom handling
 	var json = window.localStorage.getItem("user_data");
 	var data = JSON.parse(json);
 
+	// delete element
 	if (target.parentElement.id == "delete_element") {
-		// delete element
 		target.remove();
 		changeContainerData(data, target_store, null, 0);
 		return;
 	}
-	else if (target.parentElement.classList.contains("drag_create_container")) {
-		// create new container
-		var new_parent_obj = {type:"shortcuts", styles:{cols:4, backgroundColor:"#2d2d38"}, content:[]};
 
-		var {container, spacer} = createContainer(new_parent_obj);
-		target.remove();
+	// create new container
+	else if (target.parentElement.classList.contains("drag_create_container")) {
+		// get method
+		var defiend_class = classMap[data.elements[target_store.container_index].type];
+
+		// create html
+		var container = defiend_class.createContainer();
+		var spacer = createSpacer();
 		body.insertBefore(container, target.parentElement);
-		body.insertBefore(spacer, container.previousElementSibling);
+		body.insertBefore(spacer, container);
+		target.remove();
 		container.append(target);
 
-		var startpage_container = document.querySelectorAll(".startpage_container");
-		var new_container_index = Array.from(startpage_container).indexOf(container);
-		data.elements.splice(new_container_index, 0, new_parent_obj);
+		// store user data
+		var startpage_containers = document.querySelectorAll(".startpage_container");
+		var new_container_index = Array.from(startpage_containers).indexOf(container);
 
-		console.log(new_container_index)
-
-		changeContainerData(data, target_store, new_parent_obj, 0);
+		changeContainerData(data, target_store, new_container_index, null);
 	}
+
+	// store new position in local storage
 	else {
-		// store new position in local storage
-		var startpage_container = document.querySelectorAll(".startpage_container");
-		var new_parent_index = Array.from(startpage_container).indexOf(target.parentElement);
-		var new_index = Array.from(target.parentElement.children).indexOf(target);
-		var new_parent_obj = data.elements[new_parent_index];
+		var startpage_containers = document.querySelectorAll(".startpage_container");
+		var new_container_index = Array.from(startpage_containers).indexOf(target.parentElement);
+		var new_element_index = Array.from(target.parentElement.children).indexOf(target);
 
-		changeContainerData(data, target_store, new_parent_obj, new_index);
+		changeContainerData(data, target_store, new_container_index, new_element_index);
 	}
 
+	// ########################################################################################
 	// animation
 	var elements = target.parentElement.querySelectorAll(".draggable_element:not(.dragging)");
 	var element_positions = new Map();
@@ -138,8 +143,7 @@ async function dragOver(e) {
 	var element_positions = new Map();
 
 	// append directly if no other elements in container
-	// append it for container creation and elemente delete area
-	if (not_dragging.length == 0 || container.id == "delete_element" || container.classList.contains("drag_create_container")) {
+	if (not_dragging.length == 0) {
 		container.appendChild(dragging);
 		return;
 	}
@@ -181,10 +185,10 @@ async function dragOver(e) {
 	}
 
 	// if no element could be found right from the pointer use last element in row
-	var last_element = closest_row[closest_row.length - 1].el;
+	var last_element = closest_row[closest_row.length - 1]?.el;
 
 	if (closest_element) container.insertBefore(dragging, closest_element);
-	else if (last_element.nextSibling) container.insertBefore(dragging, last_element.nextSibling);
+	else if (last_element?.nextSibling) container.insertBefore(dragging, last_element.nextSibling);
 	else container.appendChild(dragging);
 
 	// animation

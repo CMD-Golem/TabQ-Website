@@ -6,6 +6,8 @@
 	<meta name="color-scheme" content="dark only">
 	<title>Startpage</title>
 	<link rel="stylesheet" href="style.css">
+	<script defer src="shortcut.js"></script>
+
 	<script defer src="dragging.js"></script>
 	<script defer src="code.js"></script>
 </head>
@@ -14,7 +16,7 @@
 		<button onclick="" class="border_button">New Link</button>
 		<button onclick="exportData('startpage')" class="border_button">Export</button>
 		<button onclick="import_data.click();" class="border_button">Import</button>
-		<div id="delete_element"></div>
+		<div id="delete_element" class="drag_create_container"></div>
 	</div>
 </body>
 </html>

@@ -8,31 +8,19 @@ body {
 	margin: 0;
 }
 
-.shortcut_container {
-	display: grid;
-	background-color: #2d2d38;
-	width: calc(100% - 40px);
-	border-radius: 20px;
-	--cols: 4;
-	--gap: 30px;
-	--padding: 20px;
-	--grid-column-width: calc((100% / var(--cols)) - ((var(--gap) * (var(--cols) - 1) ) / var(--cols)));
-	grid-template-columns: repeat(var(--cols), var(--grid-column-width) );
-	grid-gap: var(--gap);
-	padding: var(--padding);
-	max-width: calc(var(--cols) * 100px);
-	margin: 0 auto;
+.menu_container {
+	margin-bottom: 15px;
 }
 
-.shortcut_spacer {
+.spacer {
 	display: block;
-	width: calc(100% - 40px);
-	max-width: calc(var(--cols) * 100px);
+	width: 100%;
 	margin: 0 auto;
 	height: 20px;
 	position: relative;
 }
-.shortcut_spacer::after {
+
+.spacer::after {
 	content: "Create new Group";
 	position: absolute;
 	top: 4px;
@@ -54,49 +42,23 @@ body {
 	background-color: darkred;
 }
 
-.started_dragging #delete_element, .started_dragging .shortcut_spacer::after {
+.started_dragging #delete_element, .started_dragging .spacer::after {
 	display: block !important;
 }
 
-.shortcut_spacer a.draggable_element, #delete_element a.draggable_element {
+.spacer .draggable_element, #delete_element .draggable_element {
 	display: none;
 }
 
-a.draggable_element {
-	display: flex;
-	flex-direction: column;
-	text-decoration: none;
-	width: 100%;
-}
-
-a.dragging {
-	border: var(--border-file) solid var(--select-color);
+.dragging {
 	pointer-events: none;
 }
 
-a.dragging * {
+.dragging * {
 	visibility: hidden;
 }
 
-a.dragging_clone {
+.dragging_clone {
 	position: fixed;
 	top: -9999px;
-}
-
-.draggable_element img {
-	width: 100%;
-	aspect-ratio: 1/1;
-	object-fit: contain;
-}
-
-.draggable_element p {
-	color: white;
-	text-align: center;
-	margin: 0;
-	margin-top: 5px;
-	overflow: hidden;
-}
-
-.menu_container {
-	margin-bottom: 15px;
 }
