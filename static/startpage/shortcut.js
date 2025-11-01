@@ -1,5 +1,6 @@
 class Shortcut {
 	static default_obj = {type:"Shortcut", styles:{cols:4, backgroundColor:"#2d2d38"}, content:[]};
+	static label_name = "Add Shortcut";
 
 	static init() {
 		var style = document.createElement("style");
@@ -49,12 +50,7 @@ class Shortcut {
 		var container = this.createContainer(element);
 
 		for (var i = 0; i < element.content.length; i++) {
-			var link_data = element.content[i];
-			var link = document.createElement("a");
-			link.classList.add("shortcut_link");
-			link.href = link_data.link;
-			link.innerHTML = `<img src="${link_data.logo}"><p>${link_data.name}</p>`;
-
+			var link = this.createLink(element.content[i]);
 			container.appendChild(link);
 		}
 
@@ -70,25 +66,47 @@ class Shortcut {
 		container.style.setProperty("--cols", element.styles.cols);
 		container.style.setProperty("background-color", element.styles.backgroundColor);
 
+		if (edit_mode_active) this.editContainer(container);
 		return container;
 	}
 
-	static startEdit(element) {
+	static editContainer(element) {
 		element.classList.add("drag_container");
 		element.addEventListener("dragover", dragOver);
 		element.addEventListener("touchmove", dragOver);
+	}
+
+	static createLink(link_data) {
+		var link = document.createElement("a");
+		link.classList.add("shortcut_link");
+		link.href = link_data.link;
+		link.innerHTML = `<img src="${link_data.logo}"><p>${link_data.name}</p>`;
+
+		if (edit_mode_active) this.editLink(link);
+		return link;
+	}
+
+	static editLink(element) {
+		element.classList.add("draggable_element");
+		element.addEventListener("dragstart", dragStart);
+		element.addEventListener("dragend", dragEnd);
+		element.addEventListener("touchstart", dragStart);
+		element.addEventListener("touchend", dragEnd);
+		element.addEventListener("click", linkMenu);
+	}
+
+	static startEdit(element) {
+		edit_mode_active = true;
+		this.editContainer(element);
 
 		for (var i = 0; i < element.children.length; i++) {
-			var link = element.children[i];
-			link.classList.add("draggable_element");
-			link.addEventListener("dragstart", dragStart);
-			link.addEventListener("dragend", dragEnd);
-			link.addEventListener("touchstart", dragStart);
-			link.addEventListener("touchend", dragEnd);
+			this.editLink(element.children[i]);
 		}
 	}
 
 	static stopEdit(element) {
+		edit_mode_active = false;
+
 		element.classList.remove("drag_container");
 		element.removeEventListener("dragover", dragOver);
 		element.removeEventListener("touchmove", dragOver);

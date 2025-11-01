@@ -1,4 +1,5 @@
 var body = document.querySelector("body");
+var edit_mode_active = false;
 
 const classMap = {
 	Shortcut
@@ -11,7 +12,9 @@ function loadData() {
 	var data = JSON.parse(json);
 
 	// apply styles
-	body.style.backgroundColor = data.style.backgroundColor;
+	var root = document.querySelector(":root")
+	root.style.setProperty("--backgroundColor", data.style.backgroundColor);
+	root.style.setProperty("--foregroundColor", data.style.foregroundColor);
 
 	// init delete element
 	var delete_element = document.getElementById("delete_element");
@@ -37,17 +40,25 @@ function createSpacer() {
 	var spacer = document.createElement("div");
 	spacer.classList.add("spacer", "drag_create_container");
 
+	if (edit_mode_active) editSpacer(spacer);
 	return spacer;
+}
+
+function editSpacer(element) {
+	element.classList.add("drag_container");
+	element.addEventListener("dragover", dragOver);
+	element.addEventListener("touchmove", dragOver);
 }
 
 // ##################################################
 // edit function
 function startEdit() {
+	document.getElementById("general_menu").style.display = "none";
+	document.getElementById("edit_menu").style.display = "block";
+	
 	var spacers = document.querySelectorAll(".spacer");
 	for (var i = 0; i < spacers.length; i++) {
-		spacers[i].classList.add("drag_container");
-		spacers[i].addEventListener("dragover", dragOver);
-		spacers[i].addEventListener("touchmove", dragOver);
+		editSpacer(spacers[i]);
 	}
 
 	var startpage_containers = document.querySelectorAll(".startpage_container");
@@ -59,6 +70,9 @@ function startEdit() {
 }
 
 function stopEdit() {
+	document.getElementById("general_menu").style.display = "block";
+	document.getElementById("edit_menu").style.display = "none";
+
 	var spacers = document.querySelectorAll(".spacer");
 	for (var i = 0; i < spacers.length; i++) {
 		spacers[i].classList.remove("drag_container");
@@ -101,6 +115,16 @@ function changeContainerData(data, target_store, new_container_index, new_elemen
 	}
 
 	window.localStorage.setItem("user_data", JSON.stringify(data));
+}
+
+function newItem() {
+	dialog.showModal();
+
+	for (var [_, value] of Object.entries(classMap)) {
+		
+	}
+
+	dialog.innerHTML
 }
 
 // ##################################################

@@ -1,7 +1,7 @@
 body {
 	display: flex;
 	flex-direction: column;
-	background-color: #131319;
+	background-color: var(--backgroundColor);
 	padding: 15px;
 	font-family: sans-serif;
 	font-size: 12px;
@@ -61,4 +61,26 @@ body {
 .dragging_clone {
 	position: fixed;
 	top: -9999px;
+}
+
+dialog {
+	text-align: center;
+	color: inherit;
+	background-color: var(--foregroundColor);
+	border: none;
+	border-radius: 5px;
+	padding: 25px 30px;
+	--file-width: 200px;
+	max-width: calc(100vw - 110px);
+	max-height: calc(100vh - 100px);
+	overflow: hidden;
+}
+
+dialog::backdrop {
+	background-color: rgba(0, 0, 0, 0.8);
+}
+
+dialog > div {
+	border: none;
+	justify-content: center;
 }
