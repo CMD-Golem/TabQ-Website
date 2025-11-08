@@ -48,13 +48,80 @@ function editSpacer(element) {
 	element.classList.add("drag_container");
 	element.addEventListener("dragover", dragOver);
 	element.addEventListener("touchmove", dragOver);
+	element.addEventListener("click", showContainerMenu);
+}
+
+// ##################################################
+// handle element changes
+function createContainer(type, used_spacer, element) {
+	var container = classMap[type].loadContainer();
+	var spacer = createSpacer();
+
+	body.insertBefore(container, used_spacer);
+	body.insertBefore(spacer, container);
+
+	if (element == null) container.children[0].click();
+	else {
+		element.remove();
+		container.insertBefore(element, container.children[0]);
+	}
+}
+
+function getPosition(container, element) {
+	var startpage_containers = document.querySelectorAll(".startpage_container");
+	var container_index = Array.from(startpage_containers).indexOf(container);
+
+	if (element == undefined) return container_index;
+	
+	var element_index = Array.from(container.children).indexOf(element);
+	return {container_index, element_index};
+}
+
+function changeContainerData(data, target_store, new_container_index, new_element_index) {
+	var old_container_obj = data.elements[target_store.container_index];
+	var element_obj = old_container_obj.content[target_store.element_index];
+
+	// remove element from old container
+	old_container_obj.content.splice(target_store.element_index, 1);
+
+	// remove empty container
+	if (old_container_obj.content.length == 0) data.elements.splice(target_store.container_index, 1);
+
+	saveUserData(element_obj, new_container_index, new_element_index, old_container_obj.type, data, false);
+}
+
+function saveUserData(element_obj, container_index, element_index, type, data, replace_element) {
+	// get user data if it isnt delivered
+	if (data == null) {
+		var json = window.localStorage.getItem("user_data");
+		data = JSON.parse(json);
+	}
+
+	// get new container
+	var container_obj = data.elements[container_index];
+
+	// create new container
+	if (element_index == null) {
+		container_obj = structuredClone(classMap[type].default_obj);
+		data.elements.splice(container_index, 0, container_obj);
+		element_index = 0;
+	}
+	// add/replace element in container if it exists
+	if (replace_element) var splice_length = 1;
+	else var splice_length = 0;
+
+	if (container_index != null) {
+		container_obj.content.splice(element_index, splice_length, element_obj);
+	}
+
+	window.localStorage.setItem("user_data", JSON.stringify(data));
 }
 
 // ##################################################
 // edit function
 function startEdit() {
-	document.getElementById("general_menu").style.display = "none";
-	document.getElementById("edit_menu").style.display = "block";
+	body.classList.add("edit_mode");
+	edit_mode_active = true;
 	
 	var spacers = document.querySelectorAll(".spacer");
 	for (var i = 0; i < spacers.length; i++) {
@@ -70,8 +137,8 @@ function startEdit() {
 }
 
 function stopEdit() {
-	document.getElementById("general_menu").style.display = "block";
-	document.getElementById("edit_menu").style.display = "none";
+	body.classList.remove("edit_mode");
+	edit_mode_active = false;
 
 	var spacers = document.querySelectorAll(".spacer");
 	for (var i = 0; i < spacers.length; i++) {
@@ -88,43 +155,59 @@ function stopEdit() {
 	}
 }
 
-function changeContainerData(data, target_store, new_container_index, new_element_index) {
-	var old_container_obj = data.elements[target_store.container_index];
-	var element_obj = old_container_obj.content[target_store.element_index];
-
-	// remove element from old container
-	old_container_obj.content.splice(target_store.element_index, 1);
-
-	// remove empty container
-	if (old_container_obj.content.length == 0) data.elements.splice(target_store.container_index, 1);
-
-	// get new container
-	var new_container_obj = data.elements[new_container_index];
-
-	// create new container
-	if (new_element_index == null) {
-		var defiend_class = classMap[old_container_obj.type];
-
-		new_container_obj = structuredClone(defiend_class.default_obj);
-		data.elements.splice(new_container_index, 0, new_container_obj);
-		new_element_index = 0;
-	}
-	// add element to new container if it exists
-	if (new_container_index != null) {
-		new_container_obj.content.splice(new_element_index, 0, element_obj);
-	}
-
-	window.localStorage.setItem("user_data", JSON.stringify(data));
+function editContainer(element) {
+	element.classList.add("drag_container");
+	element.addEventListener("dragover", dragOver);
+	element.addEventListener("touchmove", dragOver);
 }
 
-function newItem() {
-	dialog.showModal();
+function editElement(element) {
+	element.classList.add("draggable_element");
+	element.addEventListener("dragstart", dragStart);
+	element.addEventListener("dragend", dragEnd);
+	element.addEventListener("touchstart", dragStart);
+	element.addEventListener("touchend", dragEnd);
+}
+
+function finishEditContainer(element) {
+	element.classList.remove("drag_container");
+	element.removeEventListener("dragover", dragOver);
+	element.removeEventListener("touchmove", dragOver);
+}
+
+function finishEditElement(element) {
+	element.classList.remove("draggable_element");
+	element.removeEventListener("dragstart", dragStart);
+	element.removeEventListener("dragend", dragEnd);
+	element.removeEventListener("touchstart", dragStart);
+	element.removeEventListener("touchend", dragEnd);
+}
+
+function showContainerMenu(e) {
+	var dialog = showDialog();
+	var spacer = e.currentTarget;
 
 	for (var [_, value] of Object.entries(classMap)) {
-		
+		var button = document.createElement("button");
+		button.addEventListener("click", () => { createContainer(value.default_obj.type, spacer, null); });
+		button.innerHTML = value.label_name;
+		dialog.appendChild(button);
 	}
+}
 
-	dialog.innerHTML
+function showDialog() {
+	var dialog = document.querySelector("dialog");
+	dialog.innerHTML = "";
+	dialog.showModal();
+
+	var button = document.createElement("button");
+	button.innerHTML = "Close";
+	button.addEventListener("click", e => {
+		e.currentTarget.parentElement.close();
+	});
+	dialog.appendChild(button);
+
+	return dialog;
 }
 
 // ##################################################

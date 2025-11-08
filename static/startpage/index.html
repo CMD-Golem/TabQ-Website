@@ -15,13 +15,12 @@
 	<div class="menu_container" id="general_menu">
 		<button onclick="startEdit()" class="border_button">Edit</button>
 	</div>
-	<div class="menu_container" id="edit_menu" style="display: none;">
+	<div class="menu_container" id="edit_menu">
 		<button onclick="stopEdit()" class="border_button">Finish Edit</button>
-		<button onclick="newItem()" class="border_button">New Item</button>
 		<button onclick="exportData('startpage')" class="border_button">Export</button>
 		<button onclick="import_data.click();" class="border_button">Import</button>
 		<div id="delete_element" class="drag_create_container"></div>
-		<dialog closedby="none"></dialog>
+		<dialog closedby="closerequest"></dialog>
 	</div>
 </body>
 </html>

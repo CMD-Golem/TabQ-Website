@@ -7,9 +7,9 @@ function dragStart(e) {
 	body.classList.add("started_dragging");
 
 	// store current container
-	var startpage_containers = document.querySelectorAll(".startpage_container");
-	target_store.element_index = Array.from(target.parentElement.children).indexOf(target);
-	target_store.container_index = Array.from(startpage_containers).indexOf(target.parentElement);
+	var {container_index, element_index} = getPosition(target.parentElement, target);
+	target_store.container_index = container_index;
+	target_store.element_index = element_index;
 
 	// create dragging clone
 	dragging_clone = target.cloneNode(true);
@@ -54,7 +54,7 @@ function dragEnd(e) {
 	// delete empty groups
 	var drag_containers = document.querySelectorAll(".drag_container");
 	for (var i = 0; i < drag_containers.length; i++) {
-		if (drag_containers[i].children.length == 0 && !drag_containers[i].classList.contains("drag_create_container")) {
+		if (drag_containers[i].children.length <= 1 && !drag_containers[i].classList.contains("drag_create_container")) {
 			drag_containers[i].nextElementSibling.remove();
 			drag_containers[i].remove();
 		}
@@ -75,30 +75,28 @@ function dragEnd(e) {
 	// create new container
 	else if (target.parentElement.classList.contains("drag_create_container")) {
 		// get method
-		var defiend_class = classMap[data.elements[target_store.container_index].type];
+		if (target_store.container_index == -1) var defiend_class = classMap[target_store.starting_container.type];
+		else var defiend_class = classMap[data.elements[target_store.container_index].type];
 
 		// create html
-		var container = defiend_class.createContainer();
+		var container = defiend_class.loadContainer();
 		var spacer = createSpacer();
 		body.insertBefore(container, target.parentElement);
 		body.insertBefore(spacer, container);
 		target.remove();
-		container.append(target);
+		container.insertBefore(target, container.children[0]);
 
 		// store user data
-		var startpage_containers = document.querySelectorAll(".startpage_container");
-		var new_container_index = Array.from(startpage_containers).indexOf(container);
+		var new_container_index = getPosition(container);
 
 		changeContainerData(data, target_store, new_container_index, null);
 	}
 
 	// store new position in local storage
 	else {
-		var startpage_containers = document.querySelectorAll(".startpage_container");
-		var new_container_index = Array.from(startpage_containers).indexOf(target.parentElement);
-		var new_element_index = Array.from(target.parentElement.children).indexOf(target);
+		var {container_index, element_index} = getPosition(target.parentElement, target);
 
-		changeContainerData(data, target_store, new_container_index, new_element_index);
+		changeContainerData(data, target_store, container_index, element_index);
 	}
 
 	// ########################################################################################

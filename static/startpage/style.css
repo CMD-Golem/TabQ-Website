@@ -42,10 +42,6 @@ body {
 	background-color: darkred;
 }
 
-.started_dragging #delete_element, .started_dragging .spacer::after {
-	display: block !important;
-}
-
 .spacer .draggable_element, #delete_element .draggable_element {
 	display: none;
 }
@@ -84,3 +80,18 @@ dialog > div {
 	border: none;
 	justify-content: center;
 }
+
+/* ################################## */
+.edit_mode #general_menu,
+#edit_menu {
+	display: none;
+}
+
+.edit_mode #edit_menu,
+.started_dragging #delete_element,
+.edit_mode .spacer::after,
+.edit_mode:not(.started_dragging) .create_element {
+	display: block !important;
+}
+
+

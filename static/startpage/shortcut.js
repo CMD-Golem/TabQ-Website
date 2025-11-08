@@ -1,3 +1,25 @@
+// All custom ids, classes, css rules must be started with the class name
+//
+// Needed methods
+// - init					-> runs on page load to add styles etc.
+// - load					-> add elements according to user data. Must return container element
+// - startEdit				-> start edit of provided element
+// - stopEdit				-> finish edit of provided element
+// - createContainer		-> create new item element. Can show edit menu
+// - loadContainer			-> create new container element. Must return container element
+//
+// Needed attributes
+// - default_obj			-> default user data object
+// - label_name				-> label for the button which creates a new item
+//
+// Provided functions/ variables
+// - edit_mode_active		-> returns true when edit mode is active
+// - editContainer			-> add edit attributes to provided container
+// - editElement			-> add edit attributes to provided item
+// - finishEditContainer	-> remove edit attributes to provided container
+// - finishEditElement		-> remove edit attributes to provided item
+// - showDialog				-> returns builtin dialog element and shows it, closable with dialog.close(), do not overwrite content
+
 class Shortcut {
 	static default_obj = {type:"Shortcut", styles:{cols:4, backgroundColor:"#2d2d38"}, content:[]};
 	static label_name = "Add Shortcut";
@@ -23,7 +45,7 @@ class Shortcut {
 			margin: 0 auto;
 		}
 
-		.shortcut_link {
+		.shortcut_link, .shortcut_create {
 			display: flex;
 			flex-direction: column;
 			text-decoration: none;
@@ -43,21 +65,37 @@ class Shortcut {
 			margin-top: 5px;
 			overflow: hidden;
 		}
+
+		.shortcut_label {
+			display: block;
+			margin: 10px auto;
+		}
+
+		.shortcut_create {
+			display: none;
+			height: 100%;
+			cursor: pointer;
+			/*background-color: var(--backgroundColor);*/
+		}
+
+		.edit_mode .shortcut_create {
+			display: flex;
+		}
 		`;
 	}
 
 	static load(element) {
-		var container = this.createContainer(element);
+		var container = this.loadContainer(element);
 
 		for (var i = 0; i < element.content.length; i++) {
-			var link = this.createLink(element.content[i]);
+			var link = this.loadElement(element.content[i]);
 			container.appendChild(link);
 		}
 
 		return container;
 	}
 
-	static createContainer(element) {
+	static loadContainer(element) {
 		if (element == undefined) element = this.default_obj;
 
 		var container = document.createElement("div");
@@ -70,54 +108,101 @@ class Shortcut {
 		return container;
 	}
 
-	static editContainer(element) {
-		element.classList.add("drag_container");
-		element.addEventListener("dragover", dragOver);
-		element.addEventListener("touchmove", dragOver);
-	}
-
-	static createLink(link_data) {
+	static loadElement(link_data) {
 		var link = document.createElement("a");
 		link.classList.add("shortcut_link");
 		link.href = link_data.link;
 		link.innerHTML = `<img src="${link_data.logo}"><p>${link_data.name}</p>`;
 
-		if (edit_mode_active) this.editLink(link);
+		if (edit_mode_active) this.editElement(link);
 		return link;
 	}
 
-	static editLink(element) {
-		element.classList.add("draggable_element");
-		element.addEventListener("dragstart", dragStart);
-		element.addEventListener("dragend", dragEnd);
-		element.addEventListener("touchstart", dragStart);
-		element.addEventListener("touchend", dragEnd);
-		element.addEventListener("click", linkMenu);
+	static editContainer(element) {
+		editContainer(element);
+		var create_element = document.createElement("div");
+		create_element.classList.add("shortcut_create", "shortcut_link");
+		create_element.addEventListener("click", Shortcut.createElement);
+		create_element.innerHTML = `<img src="img/add.svg"><p>Add Shortcut</p>`;
+
+		element.appendChild(create_element);
+	}
+
+	static editElement(element) {
+		editElement(element);
+		element.addEventListener("click", Shortcut.createElement);
+	}
+
+	static createContainer(e) {
+		
+	}
+
+	static createElement(e) {
+		e.preventDefault();
+		var target = e.currentTarget;
+		var dialog = showDialog();
+		var edit_element = false;
+
+		var json = window.localStorage.getItem("user_data");
+		var data = JSON.parse(json);
+
+		var {container_index, element_index} = getPosition(target.parentElement, target);
+		var container_obj = data.elements[container_index];
+
+		// show current data if its not create button
+		if (!target.classList.contains("shortcut_create")) {
+			var element_obj = container_obj.content[element_index];
+			edit_element = true;
+		}
+		else var element_obj = {name:"", link:"", logo:""};
+		
+		// create html
+		var html = `
+			<p>Add Shortcut</p>
+			<label class="shortcut_label">Name: <input type="text" id="shortcut_name" value="${element_obj.name}"></label>
+			<label class="shortcut_label">URL: <input type="text" id="shortcut_url" value="${element_obj.link}"></label>
+			<label class="shortcut_label">Image: <input type="text" id="shortcut_image" value="${element_obj.logo}"></label>
+		`;
+
+		var button = document.createElement("button");
+		button.innerHTML = "Create";
+		button.addEventListener("click", () => {
+			// create new element obj
+			var name = document.getElementById("shortcut_name").value;
+			var url = document.getElementById("shortcut_url").value;
+			var image = document.getElementById("shortcut_image").value;
+			var new_element_obj = {name:name,link:url,logo:image};
+
+			// insert new link element
+			var link = Shortcut.loadElement(new_element_obj);
+			target.parentElement.insertBefore(link, target);
+
+			// remove old link element
+			if (edit_element) target.remove();
+
+			saveUserData(new_element_obj, container_index, element_index, container_obj.type, data, edit_element);
+			dialog.close();
+		});
+
+		dialog.innerHTML += html;
+		dialog.appendChild(button);
 	}
 
 	static startEdit(element) {
-		edit_mode_active = true;
 		this.editContainer(element);
 
 		for (var i = 0; i < element.children.length; i++) {
-			this.editLink(element.children[i]);
+			this.editElement(element.children[i]);
 		}
 	}
 
 	static stopEdit(element) {
-		edit_mode_active = false;
-
-		element.classList.remove("drag_container");
-		element.removeEventListener("dragover", dragOver);
-		element.removeEventListener("touchmove", dragOver);
+		finishEditContainer(element);
+		element.querySelector(".shortcut_create").remove();
 
 		for (var i = 0; i < element.children.length; i++) {
-			var link = element.children[i];
-			link.classList.remove("draggable_element");
-			link.removeEventListener("dragstart", dragStart);
-			link.removeEventListener("dragend", dragEnd);
-			link.removeEventListener("touchstart", dragStart);
-			link.removeEventListener("touchend", dragEnd);
+			finishEditElement(element.children[i]);
+			element.children[i].removeEventListener("click", Shortcut.createElement);
 		}
 	}
 }
