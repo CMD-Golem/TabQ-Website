@@ -16,11 +16,13 @@ use tokio;
 mod magazines;
 mod workflow;
 mod error;
+mod infomaniakmail;
 
 
 #[tokio::main]
 async fn main() {
 	let api = Router::new()
+		.nest("/infomaniakmail", infomaniakmail::router().await)
 		.nest("/magazines", magazines::router().await)
 		.nest("/workflow", workflow::router().await)
 		.route("/health", get(health));
