@@ -10,7 +10,7 @@ use http::{
 	StatusCode
 };
 use std::{
-	env::var, f64::consts, fs, io::Cursor, path::Path, sync::Arc
+	env::var, fs,  path::Path, sync::Arc
 };
 use reqwest::{self, Client};
 use serde_json::{self, Value};
@@ -51,34 +51,54 @@ async fn refresh(State(state,): State<Arc<AppState>>, headers: HeaderMap) -> Res
 		return Err(error::generic_unauthorized_error("Signature invalied"));
 	}
 
-	let client = Client::new();
-	let main_dir_json = client.get(&state.repository).send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
-
-	let serde_obj: serde_json::Value = serde_json::from_str(&main_dir_json).map_err(error::map_serde_error)?;
-	let array = serde_obj.as_array().ok_or(error::generic_unauthorized_error("Malformed "))?;
-
 	let tmp_target = Path::new("/tmp/frontend");
+	let mut stack = vec![state.repository.clone()];
+	
+	while let Some(github_folder) = stack.pop() {
+		let array = match get_folder(github_folder).await {
+			Ok(array) => array,
+			Err(e) => {
+				println!("{e}");
+				continue;
+			},
+		};
 
-	for item in array.iter() {
-		let item_type = item["type"].as_str().unwrap_or("");
-
-		if item["type"] == "dir" {
-			let max;
-		}
-		else {
-			let response = download_file(&item, &tmp_target).await;
+		for item in array.iter() {
+			match item["type"].as_str() {
+				Some(item_type) if item_type == "dir" => {
+					if let Some(url) = item["url"].as_str() {
+						stack.push(url.to_string());
+					};
+				},
+				Some(item_type) if item_type == "file" => {
+					if let Err(e) = download_file(item, tmp_target).await {
+						println!("{e}");
+					};
+				},
+				Some(_) => println!("Unknown type"),
+				None => println!("Type field not found"),
+			};
 		}
 	}
 
-
-
 	let frontend_dir = Path::new("/app/frontend");
-
 
 	fs::remove_dir_all(frontend_dir).map_err(|e| error::map_path_error(e))?;
 	fs::rename(tmp_target, frontend_dir).map_err(|e| error::map_path_error(e))?;
 
 	return Ok((StatusCode::OK).into_response());
+}
+
+async fn get_folder(github_folder: String) -> Result<Vec<Value>, String> {
+	let client = Client::new();
+	let main_dir_json = client.get(github_folder)
+		.send().await.map_err(|err| format!("{err}"))?
+		.text().await.map_err(|err| format!("{err}"))?;
+
+	let serde_obj: serde_json::Value = serde_json::from_str(&main_dir_json).map_err(|err| format!("{err}"))?;
+	let array = serde_obj.as_array().ok_or("Malformed json")?;
+
+	return Ok(array.to_owned());
 }
 
 async fn download_file(item: &Value, folder_path: &Path) -> Result<(), String> {
@@ -93,12 +113,12 @@ async fn download_file(item: &Value, folder_path: &Path) -> Result<(), String> {
 		return Err("Failed to download file".to_string());
 	}
 
-	// Stream the body and write to file
+	// Stream and write to file
 	while let Some(chunk) = response.bytes_stream().next().await {
 		let chunk = match chunk {
 			Ok(chunk) => chunk,
-			Err(e) => {
-				println!("{e}");
+			Err(err) => {
+				println!("{err}");
 				break;
 			}
 		};
