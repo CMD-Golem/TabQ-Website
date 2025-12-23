@@ -16,22 +16,19 @@ use tokio;
 mod magazines;
 mod workflow;
 mod error;
-mod infomaniakmail;
+// mod infomaniakmail;
 
 
 #[tokio::main]
 async fn main() {
 	let api = Router::new()
-		.nest("/infomaniakmail", infomaniakmail::router().await)
+		// .nest("/infomaniakmail", infomaniakmail::router().await)
 		.nest("/magazines", magazines::router().await)
 		.nest("/workflow", workflow::router().await)
 		.route("/health", get(health));
 
 	let frontend = Router::new()
-		.fallback_service(
-			ServeDir::new("static")
-			.not_found_service(ServeFile::new("static/404.html"))
-		)
+		.fallback_service(ServeDir::new("static").not_found_service(ServeFile::new("static/404.html")))
 		.layer(middleware::from_fn(log_static));
 
 	let app = Router::new()
@@ -58,10 +55,10 @@ async fn log_static(req: Request<Body>, next: middleware::Next) -> Response {
 	}
 
 	if response.status().is_success() {
-		println!("{path} {referrer}");
+		println!("[Static] {path} {referrer}");
 	}
 	else {
-		println!("Failed to serve {path} {client} {referrer}");
+		eprintln!("[Static] Failed to serve {path} {client} {referrer}");
 	}
 
 	return response;

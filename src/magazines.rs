@@ -25,19 +25,20 @@ pub async fn router() -> Router {
 }
 
 async fn publications(headers: HeaderMap, body: String) -> Result<Response, Response> {
-	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
+	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let date = json_body["date"].as_str().unwrap_or("");
 	let amount = json_body["amount"].as_u64().unwrap_or(5);
 
-	println!("{} fetched publications", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
+	println!("[Magazines] {} fetched publications", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
 
 	let client = reqwest::Client::new();
 	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
 		.body(format!("{{\"editions\": [{{\"defId\": 1134,\"publicationDate\": \"{date}\"}}],\"maxHits\": {amount},\"startDate\": \"{date}\"}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
+		.send().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?
+		.text().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?;
 
 	let empty = vec![];
-	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(error::map_serde_error)?;
+	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let pages = json_obj["data"].as_array().unwrap_or(&empty);
 	let mut response = vec![];
 
@@ -49,25 +50,26 @@ async fn publications(headers: HeaderMap, body: String) -> Result<Response, Resp
 		response.push(obj);
 	}
 
-	let response_string = serde_json::to_string(&response).map_err(error::map_serde_error)?;
+	let response_string = serde_json::to_string(&response).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	
 	return Ok((StatusCode::OK, response_string).into_response());
 
 }
 
 async fn pages(headers: HeaderMap, body: String) -> Result<Response, Response> {
-	let request: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
+	let request: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let date = request["date"].as_str().unwrap_or("");
 
-	println!("{} fetched pages", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
+	println!("[Magazines] {} fetched pages", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
 
 	let client = reqwest::Client::new();
 	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/getPages")
 		.body(format!("{{\"screenInfo\":{{\"width\":1155,\"height\":1060}},\"editions\":[{{\"defId\":1134,\"publicationDate\":\"{date}\"}}]}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
+		.send().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?
+		.text().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?;
 
 	let empty = vec![];
-	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(error::map_serde_error)?;
+	let json_obj: serde_json::Value = serde_json::from_str(&fetch).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let pages = json_obj["data"]["pages"].as_array().unwrap_or(&empty);
 	let mut images = vec![];
 
@@ -76,7 +78,7 @@ async fn pages(headers: HeaderMap, body: String) -> Result<Response, Response> {
 		images.push(image.to_string());
 	}
 
-	let image_string = serde_json::to_string(&images).map_err(error::map_serde_error)?;
+	let image_string = serde_json::to_string(&images).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 
 	return Ok((StatusCode::OK, image_string).into_response());
 }

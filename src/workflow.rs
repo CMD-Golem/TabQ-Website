@@ -1,129 +1,161 @@
 use axum::{
+	response::{IntoResponse, Response},
 	extract::State,
 	routing::post,
 	Router,
-	response::{IntoResponse, Response},
-};
-use http::{
-	HeaderMap,
-	header::AUTHORIZATION,
-	StatusCode
 };
 use std::{
-	env::var, fs,  path::Path, sync::Arc
+	collections::HashSet,
+	env::var,
+	path::Path,
+	fs,
 };
-use reqwest::{self, Client};
-use serde_json::{self, Value};
-use tokio_stream::StreamExt;
+use hmac::{Hmac, Mac};
+use http::{HeaderMap, StatusCode};
 use tokio::{fs::File, io::AsyncWriteExt};
+use reqwest;
+use serde_json;
+use sha2::Sha256;
+use futures_util::StreamExt;
 
 use crate::error;
 
-#[derive(Clone)]
-struct AppState {
-	secret: String,
-	repository: String,
-}
+// Defintions
+const TEMP_DIR: &str = "/tmp-static/";
+const PROD_DIR: &str = "/static/";
+const BRANCH: &str = "main";
 
 pub async fn router() -> Router {
-	let state = AppState {
-		secret: var("GITHUB_WEBHOOK_SECRET").expect("Missing GITHUB_WEBHOOK_SECRET env var"),
-		repository: var("GITHUB_REPOSITORY").expect("Missing GITHUB_REPOSITORY env var"), // https://api.github.com/repos/CMD-Golem/TabQ-Website/contents/static?ref=main
-	};
+	let signature = var("GITHUB_WEBHOOK_SIGNATURE").expect("[Workflow] Missing GITHUB_WEBHOOK_SIGNATURE env var");
 
 	return Router::new()
 		.route("/refresh-frontend", post(refresh))
-		.with_state(Arc::new(state));
+		.with_state(signature);
 }
 
 // hot refresh static files
-async fn refresh(State(state,): State<Arc<AppState>>, headers: HeaderMap) -> Result<Response, Response> {
-	let request_bearer = headers
-		.get(AUTHORIZATION)
-		.ok_or(error::generic_unauthorized_error("Signature required"))?
+async fn refresh(State(server_signature): State<String>, headers: HeaderMap, body: String) -> Result<Response, Response> {
+	// check signature
+	let header_signature = headers
+		.get("x-hub-signature-256")
+		.ok_or(error::generic_unauthorized_error("[Workflow] Signature required"))?
 		.to_str()
-		.map_err(|e| error::map_http_error(e))?
-		.strip_prefix("Bearer ")
-		.ok_or(error::generic_unauthorized_error("Expected Bearer token"))?;
+		.map_err(|e| error::map_http_error(e, "Workflow"))?;
 
-	if request_bearer != state.secret {
-		// println!("Signature is correctly detected as wrong");
-		return Err(error::generic_unauthorized_error("Signature invalied"));
+	let mut mac = Hmac::<Sha256>::new_from_slice(header_signature.as_bytes())
+		.map_err(|_e| error::generic_unauthorized_error("[Workflow] Invalid signature length"))?;
+	mac.update(body.as_bytes());
+
+	if mac.verify_slice(server_signature.as_bytes()).is_err() {
+		return Err(error::generic_unauthorized_error("[Workflow] Signature invalied"));
 	}
 
-	let tmp_target = Path::new("/tmp/frontend");
-	let mut stack = vec![state.repository.clone()];
+	// read data from body
+	let json_obj: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Workflow"))?;
+	let commits = match json_obj["commits"].as_array() {
+		Some(commits) => commits,
+		None => return Ok((StatusCode::OK, "No commits in push").into_response()),
+	};
+
+	let repo_url = match json_obj["repository"]["full_name"].as_str() {
+		Some(name) => format!("https://api.github.com/repos/{name}contents/"),
+		None => return Err((StatusCode::BAD_REQUEST, "Repository isnt defined").into_response()),
+	};
+
+	let mut create_file: HashSet<String> = HashSet::new();
+	let mut move_files: HashSet<String> = HashSet::new();
 	
-	while let Some(github_folder) = stack.pop() {
-		let array = match get_folder(github_folder).await {
-			Ok(array) => array,
+	for commit in commits {
+		let id = commit["id"].as_str().unwrap_or_default();
+		let message = commit["message"].as_str().unwrap_or_default();
+		println!("[Workflow] Loading commit {message}, ID: {id}");
+
+		create_hashset(commit, "added", &mut create_file);
+		create_hashset(commit, "modified", &mut create_file);
+		create_hashset(commit, "removed", &mut move_files);
+	}
+
+	// dowload new and changed files
+	let temp_dir = Path::new(TEMP_DIR);
+	let client = reqwest::Client::new();
+
+	'file_loop: for file in &create_file {
+		let mut stream = match client.get(format!("{repo_url}{file}?ref={BRANCH}")).send().await {
+			Ok(res) if res.status().is_success() => res,
+			Ok(_) => {
+				eprintln!("[Workflow] Couldnt donwload {file}");
+				continue 'file_loop;
+			}
 			Err(e) => {
-				println!("{e}");
-				continue;
-			},
+				eprintln!("[Workflow] {e}");
+				continue 'file_loop;
+			}
+		}.bytes_stream();
+
+		// write stream to file
+		let path = temp_dir.join(&file);
+		let mut dest = match File::create(&path).await {
+			Ok(file) => file,
+			Err(e) => {
+				eprintln!("[Workflow] {e}");
+				continue 'file_loop;
+			}
 		};
 
-		for item in array.iter() {
-			match item["type"].as_str() {
-				Some(item_type) if item_type == "dir" => {
-					if let Some(url) = item["url"].as_str() {
-						stack.push(url.to_string());
-					};
-				},
-				Some(item_type) if item_type == "file" => {
-					if let Err(e) = download_file(item, tmp_target).await {
-						println!("{e}");
-					};
-				},
-				Some(_) => println!("Unknown type"),
-				None => println!("Type field not found"),
+		while let Some(chunk) = stream.next().await {
+			let chunk = match chunk {
+				Ok(chunk) => chunk,
+				Err(e) => {
+					eprintln!("[Workflow] {e}");
+					fs::remove_file(&path).unwrap_or_default();
+					continue 'file_loop;
+				}
+			};
+			match dest.write_all(&chunk).await {
+				Ok(file) => file,
+				Err(e) => {
+					eprintln!("[Workflow] {e}");
+					fs::remove_file(&path).unwrap_or_default();
+					continue 'file_loop;
+				}
 			};
 		}
 	}
 
-	let frontend_dir = Path::new("/app/frontend");
+	// move temp to prod
+	let prod_dir = Path::new(PROD_DIR);
+	move_files.extend(create_file);
 
-	fs::remove_dir_all(frontend_dir).map_err(|e| error::map_path_error(e))?;
-	fs::rename(tmp_target, frontend_dir).map_err(|e| error::map_path_error(e))?;
+	for file in move_files {
+		let temp_path = temp_dir.join(&file);
+		let prod_path = prod_dir.join(&file);
+
+		// remove file from prod if it exists
+		if prod_path.exists() {
+			match fs::remove_file(&prod_path) {
+				Ok(_) => (),
+				Err(e) => eprintln!("[Workflow] {e}"),
+			}
+		}
+
+		// move file to prod if it exists in temp
+		if temp_path.exists() {
+			match fs::rename(temp_path, prod_path) {
+				Ok(_) => (),
+				Err(e) => eprintln!("[Workflow] {e}"),
+			}
+		}
+	}
+
+	println!("[Workflow] Finished update");
 
 	return Ok((StatusCode::OK).into_response());
 }
 
-async fn get_folder(github_folder: String) -> Result<Vec<Value>, String> {
-	let client = Client::new();
-	let main_dir_json = client.get(github_folder)
-		.send().await.map_err(|err| format!("{err}"))?
-		.text().await.map_err(|err| format!("{err}"))?;
-
-	let serde_obj: serde_json::Value = serde_json::from_str(&main_dir_json).map_err(|err| format!("{err}"))?;
-	let array = serde_obj.as_array().ok_or("Malformed json")?;
-
-	return Ok(array.to_owned());
-}
-
-async fn download_file(item: &Value, folder_path: &Path) -> Result<(), String> {
-	let item_name = item["name"].as_str().ok_or("Could not read name field".to_string())?;
-	let item_download = item["download_url"].as_str().ok_or("Could not read name field".to_string())?;
-	let mut dest = File::create(folder_path.join(item_name)).await.map_err(|err| format!("{err}"))?;
-
-	let client = Client::new();
-	let response = client.get(item_download).send().await.map_err(|err| format!("{err}"))?;
-
-	if !response.status().is_success() {
-		return Err("Failed to download file".to_string());
+fn create_hashset(commit: &serde_json::Value, key: &str, hashset: &mut HashSet<String>) {
+	 if let Some(files) = commit[key].as_array() {
+		for file in files.iter().filter_map(|v| v.as_str()) {
+			hashset.insert(file.to_string());
+		}
 	}
-
-	// Stream and write to file
-	while let Some(chunk) = response.bytes_stream().next().await {
-		let chunk = match chunk {
-			Ok(chunk) => chunk,
-			Err(err) => {
-				println!("{err}");
-				break;
-			}
-		};
-		dest.write_all(&chunk).await.map_err(|err| format!("{err}"))?;
-	}
-
-	return Ok(());
 }

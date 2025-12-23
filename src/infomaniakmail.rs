@@ -17,7 +17,7 @@ pub async fn router() -> Router {
 }
 
 async fn create(headers: HeaderMap, body: String) -> Result<Response, Response> {
-	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
+	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Infomaniak Mail"))?;
 	let mailbox_name = json_body["mailbox_name"].as_str().unwrap_or("");
 	let mail_hosting_id = json_body["mail_hosting_id"].as_i64().unwrap_or(0);
 
@@ -33,13 +33,14 @@ async fn create(headers: HeaderMap, body: String) -> Result<Response, Response> 
 	let client = reqwest::Client::new();
 	let fetch = client.post(format!("https://api.infomaniak.com/1/mail_hostings/{mail_hosting_id}/mailboxes"))
 		.body(format!("{{\"mailbox_name\": \"{mailbox_name}\", \"target\": \"current_user\", \"link_to_current_user\": true}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
+		.send().await.map_err(|e| error::map_reqwest_error(e, "Infomaniak Mail"))?
+		.text().await.map_err(|e| error::map_reqwest_error(e, "Infomaniak Mail"))?;
 	
 	return Ok((StatusCode::OK, fetch).into_response());
 }
 
 async fn remove(headers: HeaderMap, body: String) -> Result<Response, Response> {
-	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(error::map_serde_error)?;
+	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Infomaniak Mail"))?;
 	let mailbox_name = json_body["mailbox_name"].as_str().unwrap_or("");
 	let mail_hosting_id = json_body["mail_hosting_id"].as_str().unwrap_or("");
 
@@ -52,7 +53,8 @@ async fn remove(headers: HeaderMap, body: String) -> Result<Response, Response> 
 	let client = reqwest::Client::new();
 	let fetch = client.post(format!("https://api.infomaniak.com/1/mail_hostings/{mail_hosting_id}/mailboxes"))
 		.body(format!("{{\"mailbox_name\": \"{mailbox_name}\"}}"))
-		.send().await.map_err(error::map_reqwest_error)?.text().await.map_err(error::map_reqwest_error)?;
+		.send().await.map_err(|e| error::map_reqwest_error(e, "Infomaniak Mail"))?
+		.text().await.map_err(|e| error::map_reqwest_error(e, "Infomaniak Mail"))?;
 	
 	return Ok((StatusCode::OK, fetch).into_response());
 }
