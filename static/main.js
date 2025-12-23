@@ -145,8 +145,9 @@ async function loadMigros() {
 	el_main.innerHTML = "";
 	window.localStorage.setItem("selected_week", `${year}-${week}`);
 
-	// 	List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
-	var magazin_load = await fetch(`https://reader3.isu.pub/m-magazin/migros-magazin-${week}-${year}-d-os/reader3_4.json`);
+	// List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
+	// New link since 46-2025 https://publication.issuu.com/m-magazin/migros-magazin-46-2025-d-os/reader4.json
+	var magazin_load = await fetch(`https://publication.issuu.com/m-magazin/migros-magazin-${week}-${year}-d-os/reader4.json`);
 
 	if (magazin_load.status != 200) {
 		console.error(magazin_load);
@@ -157,7 +158,7 @@ async function loadMigros() {
 
 	for (var i = 0; i < magazin.document.pages.length; i++) {
 		var element = document.createElement('img');
-		element.src = "https://" + magazin.document.pages[i].imageUri;
+		element.src = magazin.document.pages[i].svgUri;
 		el_main.appendChild(element);
 	}
 }

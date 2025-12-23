@@ -3,10 +3,11 @@ use axum::{
 	response::IntoResponse,
 	routing::post,
 	routing::get,
+	routing::any,
 	Router
 };
 use serde::Serialize;
-use http::HeaderMap;
+use http::{HeaderMap, status};
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
 use serde_json;
@@ -28,6 +29,7 @@ async fn main() {
 		.route("/api/health", get(health))
 		.route("/api/1/publications", post(publications))
 		.route("/api/1/pages", post(pages))
+		.route("/api/test", any(test))
 		.fallback_service(ServeDir::new("static"));
 
 	let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
@@ -93,5 +95,11 @@ async fn pages(headers: HeaderMap, body: String) -> Result<impl IntoResponse, er
 }
 
 async fn health() -> StatusCode {
+	return StatusCode::OK;
+}
+
+async fn test(headers: HeaderMap, body: String) -> status::StatusCode {
+	println!("\nHeaders: {:?}", headers);
+	println!("\nBody: {body}");
 	return StatusCode::OK;
 }
