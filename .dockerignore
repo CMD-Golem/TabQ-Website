@@ -1,4 +1,6 @@
 target
+.env
+.env.ps1
 .git
 .gitignore
 .github

@@ -1,6 +1,6 @@
 use axum::{
 	http::{StatusCode, Request},
-	routing::get,
+	routing::{get, any},
 	middleware,
 	Router,
 	body::Body,
@@ -23,9 +23,10 @@ mod error;
 async fn main() {
 	let api = Router::new()
 		// .nest("/infomaniakmail", infomaniakmail::router().await)
-		.nest("/magazines", magazines::router().await)
-		.nest("/workflow", workflow::router().await)
-		.route("/health", get(health));
+		.nest("/magazines", magazines::router())
+		.nest("/workflow", workflow::router())
+		.route("/health", get(health))
+		.route("/test", any(test));
 
 	let frontend = Router::new()
 		.fallback_service(ServeDir::new("static").not_found_service(ServeFile::new("static/404.html")))
@@ -65,5 +66,11 @@ async fn log_static(req: Request<Body>, next: middleware::Next) -> Response {
 }
 
 async fn health() -> StatusCode {
+	return StatusCode::OK;
+}
+
+async fn test(headers: http::HeaderMap, body: String) -> StatusCode {
+	println!("[Test] Headers: {:?}", headers);
+	println!("[Test] Body: {body}");
 	return StatusCode::OK;
 }

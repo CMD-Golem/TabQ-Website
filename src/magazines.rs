@@ -18,7 +18,7 @@ struct Magazines {
 	publication_date: String,
 }
 
-pub async fn router() -> Router {
+pub fn router() -> Router {
 	return Router::new()
 		.route("/publications", post(publications))
 		.route("/pages", post(pages));
