@@ -1,11 +1,11 @@
 # TabQ
 Main website Monorepo
 
-## Home
+## Startpage
 Quick access to links. Extendable with plugins.
 
 ## Alias
-Quickly exchange the Infomaniak email address.<br>
+Quickly exchange Infomaniak email addresses.<br>
 Work in progress.
 
 ## Magazines
