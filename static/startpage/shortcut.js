@@ -19,9 +19,10 @@
 // - finishEditContainer	-> remove edit attributes to provided container
 // - finishEditElement		-> remove edit attributes to provided item
 // - showDialog				-> returns builtin dialog element and shows it, closable with dialog.close(), do not overwrite content
+//
 
 class Shortcut {
-	static default_obj = {type:"Shortcut", styles:{cols:4, backgroundColor:"#2d2d38"}, content:[]};
+	static default_obj = {type:"Shortcut", styles:{width:"100px", cols:4, backgroundColor:"#2d2d38"}, content:[]};
 	static label_name = "Add Shortcut";
 
 	static init() {
@@ -29,11 +30,15 @@ class Shortcut {
 		document.head.appendChild(style);
 
 		style.innerHTML = `
+		.startpage_wrapper:has(.shortcut_container) {
+			background-color: #2d2d38;
+			border-radius: 20px;
+			margin: 0 auto;
+		}
+
 		.shortcut_container {
 			display: grid;
-			background-color: #2d2d38;
-			width: calc(100% - 40px);
-			border-radius: 20px;
+			--width: 100px;
 			--cols: 4;
 			--gap: 30px;
 			--padding: 20px;
@@ -41,8 +46,7 @@ class Shortcut {
 			grid-template-columns: repeat(var(--cols), var(--grid-column-width) );
 			grid-gap: var(--gap);
 			padding: var(--padding);
-			max-width: calc(var(--cols) * 100px);
-			margin: 0 auto;
+			width: calc(var(--cols) * var(--width));
 		}
 
 		.shortcut_link, .shortcut_create {
@@ -99,12 +103,42 @@ class Shortcut {
 		if (element == undefined) element = this.default_obj;
 
 		var container = document.createElement("div");
-		container.setAttribute("data-class", "Shortcut");
-		container.classList.add("shortcut_container", "startpage_container");
+		container.classList.add("shortcut_container");
 		container.style.setProperty("--cols", element.styles.cols);
-		container.style.setProperty("background-color", element.styles.backgroundColor);
+		container.style.setProperty("--width", element.styles.width);
 
-		if (edit_mode_active) this.editContainer(container);
+		// edit container elements
+		var create_button = document.createElement("button");
+		create_button.innerHTML = '<img src="img/add.svg">';
+		create_button.style.setProperty("right", "10px");
+		create_button.classList.add("edit_container_button");
+		create_button.addEventListener("click", () => {
+			Shortcut.createElement(container, undefined, false);
+		});
+
+		var edit_button = document.createElement("button");
+		edit_button.innerHTML = '<img src="img/edit.svg">';
+		create_button.style.setProperty("right", "40px");
+		edit_button.classList.add("edit_container_button");
+		edit_button.addEventListener("click", () => {
+			Shortcut.editContainer(container);
+		});
+
+		var button_box = document.createElement("div");
+		button_box.classList.add("button_box");
+		button_box.append(create_button);
+		button_box.append(edit_button);
+
+		if (edit_mode_active) editContainer(container);
+
+		var wrapper = document.createElement("div");
+		wrapper.setAttribute("data-class", "Shortcut");
+		wrapper.classList.add("startpage_wrapper");
+		wrapper.style.setProperty("background-color", element.styles.backgroundColor);
+
+		wrapper.append(button_box);
+		wrapper.append(container);
+
 		return container;
 	}
 
@@ -118,54 +152,91 @@ class Shortcut {
 		return link;
 	}
 
-	static editContainer(element) {
-		editContainer(element);
-		var create_element = document.createElement("div");
-		create_element.classList.add("shortcut_create", "shortcut_link");
-		create_element.addEventListener("click", Shortcut.createElement);
-		create_element.innerHTML = `<img src="img/add.svg"><p>Add Shortcut</p>`;
+	static editContainer(container) {
+		var dialog = showDialog("any");
+		var json = window.localStorage.getItem(location.pathname);
+		var data = JSON.parse(json);
 
-		element.appendChild(create_element);
+		var width = container.style.getPropertyValue("--width");
+		var cols = container.style.getPropertyValue("--cols");
+
+		var html = `
+			<p>Edit Group</p>
+			<label class="shortcut_label">Shortcut width: <input type="text" id="shortcut_width" value="${width}"></label>
+			<label class="shortcut_label">Columns amount: <input type="text" id="shortcut_cols" value="${cols}"></label>
+		`;
+		var div = document.createElement("div");
+		div.innerHTML = html;
+
+		var button = document.createElement("button");
+		button.innerHTML = "Update";
+		button.addEventListener("click", () => {
+			// store input
+			var {wrapper_index} = getPosition(container);
+			var container_obj = data.elements[wrapper_index];
+
+			container_obj.styles.width = document.getElementById("shortcut_width").value;
+			container_obj.styles.cols = document.getElementById("shortcut_cols").value;
+
+			window.localStorage.setItem(location.pathname, JSON.stringify(data));
+
+			// show input
+			container.style.setProperty("--width", container_obj.styles.width);
+			container.style.setProperty("--cols", container_obj.styles.cols);
+
+			dialog.close();
+		});
+
+		dialog.appendChild(div);
+		dialog.appendChild(button);
 	}
 
 	static editElement(element) {
 		editElement(element);
-		element.addEventListener("click", Shortcut.createElement);
+		element.addEventListener("click", Shortcut.createElementHelper);
 	}
 
-	static createContainer(e) {
-		
-	}
-
-	static createElement(e) {
+	static createElementHelper(e) {
 		e.preventDefault();
-		var target = e.currentTarget;
-		var dialog = showDialog();
-		var edit_element = false;
+		var element = e.currentTarget;
+		Shortcut.createElement(element.parentElement, element, false);
+	}
 
-		var json = window.localStorage.getItem("user_data");
+	static createElement(container, element, new_container) {
+		if (new_container) var dialog = showDialog("needed");
+		else var dialog = showDialog("any");
+
+		var json = window.localStorage.getItem(location.pathname);
 		var data = JSON.parse(json);
 
-		var {container_index, element_index} = getPosition(target.parentElement, target);
-		var container_obj = data.elements[container_index];
+		var {wrapper_index, element_index} = getPosition(container, element);
 
-		// show current data if its not create button
-		if (!target.classList.contains("shortcut_create")) {
-			var element_obj = container_obj.content[element_index];
-			edit_element = true;
+		// determine if element has to be created or edited
+		if (element == undefined) {
+			var edit_element = false
+			var element_obj = {name:"", link:"", logo:""};
+			var html_title = "Add Shortcut";
+			var html_button = "Create";
 		}
-		else var element_obj = {name:"", link:"", logo:""};
+		else {
+			var edit_element = true;
+			var element_obj = data.elements[wrapper_index].content[element_index];
+			var html_title = "Edit Shortcut";
+			var html_button = "Update";
+		}
 		
 		// create html
 		var html = `
-			<p>Add Shortcut</p>
+			<p>${html_title}</p>
 			<label class="shortcut_label">Name: <input type="text" id="shortcut_name" value="${element_obj.name}"></label>
 			<label class="shortcut_label">URL: <input type="text" id="shortcut_url" value="${element_obj.link}"></label>
 			<label class="shortcut_label">Image: <input type="text" id="shortcut_image" value="${element_obj.logo}"></label>
 		`;
+		var div = document.createElement("div");
+		div.innerHTML = html;
 
 		var button = document.createElement("button");
-		button.innerHTML = "Create";
+		button.innerHTML = html_button;
 		button.addEventListener("click", () => {
 			// create new element obj
 			var name = document.getElementById("shortcut_name").value;
@@ -175,34 +246,38 @@ class Shortcut {
 
 			// insert new link element
 			var link = Shortcut.loadElement(new_element_obj);
-			target.parentElement.insertBefore(link, target);
 
 			// remove old link element
-			if (edit_element) target.remove();
+			if (edit_element) {
+				container.insertBefore(link, element);
+				element.remove();
+			}
+			else container.append(link);
 
-			saveUserData(new_element_obj, container_index, element_index, container_obj.type, data, edit_element);
+			saveUserData(new_element_obj, wrapper_index, element_index, "Shortcut", data, edit_element);
 			dialog.close();
 		});
 
-		dialog.innerHTML += html;
+		dialog.appendChild(div);
 		dialog.appendChild(button);
 	}
 
-	static startEdit(element) {
-		this.editContainer(element);
+	static startEdit(wrapper) {
+		var container = wrapper.querySelector(".shortcut_container");
+		editContainer(container);
 
-		for (var i = 0; i < element.children.length; i++) {
-			this.editElement(element.children[i]);
+		for (var i = 0; i < container.children.length; i++) {
+			this.editElement(container.children[i]);
 		}
 	}
 
-	static stopEdit(element) {
-		finishEditContainer(element);
-		element.querySelector(".shortcut_create").remove();
+	static stopEdit(wrapper) {
+		var container = wrapper.querySelector(".shortcut_container");
+		finishEditContainer(container);
 
-		for (var i = 0; i < element.children.length; i++) {
-			finishEditElement(element.children[i]);
-			element.children[i].removeEventListener("click", Shortcut.createElement);
+		for (var i = 0; i < container.children.length; i++) {
+			finishEditElement(container.children[i]);
+			container.children[i].removeEventListener("click", Shortcut.createElementHelper);
 		}
 	}
 }

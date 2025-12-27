@@ -28,7 +28,12 @@ async fn main() {
 		.route("/health", get(health))
 		.route("/test", any(test));
 
+	let startpage = Router::new()
+		.fallback_service(ServeDir::new("static/startpage")
+		.fallback(ServeFile::new("static/startpage/index.html")));
+
 	let frontend = Router::new()
+		.nest("/startpage", startpage)
 		.fallback_service(ServeDir::new("static").not_found_service(ServeFile::new("static/404.html")))
 		.layer(middleware::from_fn(log_static));
 

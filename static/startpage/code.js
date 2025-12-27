@@ -1,4 +1,5 @@
 var body = document.querySelector("body");
+var container_list = document.getElementById("container_list");
 var edit_mode_active = false;
 
 const classMap = {
@@ -6,8 +7,11 @@ const classMap = {
 };
 
 function loadData() {
-	var json = window.localStorage.getItem("user_data");
-	if (json == null) return;
+	var json = window.localStorage.getItem(location.pathname);
+	if (json == null) {
+		json = '{"style":{"backgroundColor":"#131319", "foregroundColor":"#2d2d38"},"elements":[]}';
+		startEdit();
+	};
 
 	var data = JSON.parse(json);
 
@@ -25,13 +29,16 @@ function loadData() {
 	for (var [_, value] of Object.entries(classMap)) value.init();
 
 	// insert elements
+	var spacer = createSpacer();
+	container_list.appendChild(spacer);
+
 	for (var i = 0; i < data.elements.length; i++) {
 		var defiend_class = classMap[data.elements[i].type];
 		var container = defiend_class.load(data.elements[i]);
 		var spacer = createSpacer();
 
-		body.appendChild(container);
-		body.appendChild(spacer);
+		container_list.appendChild(container.parentElement);
+		container_list.appendChild(spacer);
 	}
 }
 loadData();
@@ -57,64 +64,70 @@ function createContainer(type, used_spacer, element) {
 	var container = classMap[type].loadContainer();
 	var spacer = createSpacer();
 
-	body.insertBefore(container, used_spacer);
-	body.insertBefore(spacer, container);
+	if (used_spacer.isConnected) container_list.insertBefore(container.parentElement, used_spacer.nextElementSibling);
+	else container_list.insertBefore(container.parentElement, container_list.children[0]);
+	
+	if (container.parentElement.nextElementSibling == null) container_list.append(spacer);
+	else container_list.insertBefore(spacer, container.parentElement.nextElementSibling);
+	
 
-	if (element == null) container.children[0].click();
+	if (element == null) classMap[type].createElement(container, undefined, true);
 	else {
 		element.remove();
-		container.insertBefore(element, container.children[0]);
+		container.appendChild(element);
 	}
+
+	return container;
 }
 
 function getPosition(container, element) {
-	var startpage_containers = document.querySelectorAll(".startpage_container");
-	var container_index = Array.from(startpage_containers).indexOf(container);
+	var startpage_wrappers = document.querySelectorAll(".startpage_wrapper");
+	var wrapper_index = Array.from(startpage_wrappers).indexOf(container.parentElement);
 
-	if (element == undefined) return container_index;
+	if (element == undefined) return {wrapper_index, element_index:null};
 	
 	var element_index = Array.from(container.children).indexOf(element);
-	return {container_index, element_index};
+	return {wrapper_index, element_index};
 }
 
-function changeContainerData(data, target_store, new_container_index, new_element_index) {
-	var old_container_obj = data.elements[target_store.container_index];
+function changeContainerData(data, target_store, new_wrapper_index, new_element_index) {
+	var old_container_obj = data.elements[target_store.wrapper_index];
 	var element_obj = old_container_obj.content[target_store.element_index];
 
 	// remove element from old container
 	old_container_obj.content.splice(target_store.element_index, 1);
 
 	// remove empty container
-	if (old_container_obj.content.length == 0) data.elements.splice(target_store.container_index, 1);
+	if (old_container_obj.content.length == 0) data.elements.splice(target_store.wrapper_index, 1);
 
-	saveUserData(element_obj, new_container_index, new_element_index, old_container_obj.type, data, false);
+	saveUserData(element_obj, new_wrapper_index, new_element_index, old_container_obj.type, data, false);
 }
 
-function saveUserData(element_obj, container_index, element_index, type, data, replace_element) {
+function saveUserData(element_obj, wrapper_index, element_index, type, data, replace_element) {
 	// get user data if it isnt delivered
 	if (data == null) {
-		var json = window.localStorage.getItem("user_data");
+		var json = window.localStorage.getItem(location.pathname);
 		data = JSON.parse(json);
 	}
 
 	// get new container
-	var container_obj = data.elements[container_index];
+	var container_obj = data.elements[wrapper_index];
 
 	// create new container
 	if (element_index == null) {
 		container_obj = structuredClone(classMap[type].default_obj);
-		data.elements.splice(container_index, 0, container_obj);
+		data.elements.splice(wrapper_index, 0, container_obj);
 		element_index = 0;
 	}
 	// add/replace element in container if it exists
 	if (replace_element) var splice_length = 1;
 	else var splice_length = 0;
 
-	if (container_index != null) {
+	if (wrapper_index != null) {
 		container_obj.content.splice(element_index, splice_length, element_obj);
 	}
 
-	window.localStorage.setItem("user_data", JSON.stringify(data));
+	window.localStorage.setItem(location.pathname, JSON.stringify(data));
 }
 
 // ##################################################
@@ -128,11 +141,11 @@ function startEdit() {
 		editSpacer(spacers[i]);
 	}
 
-	var startpage_containers = document.querySelectorAll(".startpage_container");
-	for (var i = 0; i < startpage_containers.length; i++) {
-		var class_name = startpage_containers[i].getAttribute("data-class");
+	var startpage_wrappers = document.querySelectorAll(".startpage_wrapper");
+	for (var i = 0; i < startpage_wrappers.length; i++) {
+		var class_name = startpage_wrappers[i].getAttribute("data-class");
 		var defiend_class = classMap[class_name];
-		defiend_class.startEdit(startpage_containers[i]);
+		defiend_class.startEdit(startpage_wrappers[i]);
 	}
 }
 
@@ -147,18 +160,18 @@ function stopEdit() {
 		spacers[i].removeEventListener("touchmove", dragOver);
 	}
 
-	var startpage_containers = document.querySelectorAll(".startpage_container");
-	for (var i = 0; i < startpage_containers.length; i++) {
-		var class_name = startpage_containers[i].getAttribute("data-class");
+	var startpage_wrappers = document.querySelectorAll(".startpage_wrapper");
+	for (var i = 0; i < startpage_wrappers.length; i++) {
+		var class_name = startpage_wrappers[i].getAttribute("data-class");
 		var defiend_class = classMap[class_name];
-		defiend_class.stopEdit(startpage_containers[i]);
+		defiend_class.stopEdit(startpage_wrappers[i]);
 	}
 }
 
-function editContainer(element) {
-	element.classList.add("drag_container");
-	element.addEventListener("dragover", dragOver);
-	element.addEventListener("touchmove", dragOver);
+function editContainer(container) {
+	container.classList.add("drag_container");
+	container.addEventListener("dragover", dragOver);
+	container.addEventListener("touchmove", dragOver);
 }
 
 function editElement(element) {
@@ -184,7 +197,7 @@ function finishEditElement(element) {
 }
 
 function showContainerMenu(e) {
-	var dialog = showDialog();
+	var dialog = showDialog("any");
 	var spacer = e.currentTarget;
 
 	for (var [_, value] of Object.entries(classMap)) {
@@ -195,11 +208,18 @@ function showContainerMenu(e) {
 	}
 }
 
-function showDialog() {
+function showDialog(closedby) {
 	var dialog = document.querySelector("dialog");
 	dialog.innerHTML = "";
 	dialog.showModal();
 
+	if (closedby == "needed") {
+		dialog.setAttribute("closedby", "none");
+		return dialog;
+	}
+	else dialog.setAttribute("closedby", closedby); // closedby any / none
+
+	// add close button
 	var button = document.createElement("button");
 	button.innerHTML = "Close";
 	button.addEventListener("click", e => {
@@ -221,7 +241,7 @@ import_data.onchange = e => {
 	reader.readAsText(e.target.files[0],'UTF-8');
 
 	reader.onload = readerEvent => {
-		window.localStorage.setItem("user_data", readerEvent.target.result);
+		window.localStorage.setItem(location.pathname, readerEvent.target.result);
 		document.location.reload();
 	}
 }
@@ -229,6 +249,6 @@ import_data.onchange = e => {
 function exportData(name) {
 	var link = document.createElement('a');
 	link.download = name + ".json";
-	link.href = "data:text/plain;charset=utf-8," + window.localStorage.getItem("user_data");;
+	link.href = "data:text/plain;charset=utf-8," + window.localStorage.getItem(location.pathname);
 	link.click();
 }

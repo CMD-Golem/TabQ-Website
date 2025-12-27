@@ -7,8 +7,8 @@ function dragStart(e) {
 	body.classList.add("started_dragging");
 
 	// store current container
-	var {container_index, element_index} = getPosition(target.parentElement, target);
-	target_store.container_index = container_index;
+	var {wrapper_index, element_index} = getPosition(target.parentElement, target);
+	target_store.wrapper_index = wrapper_index;
 	target_store.element_index = element_index;
 
 	// create dragging clone
@@ -51,18 +51,18 @@ function dragEnd(e) {
 	body.classList.remove("started_dragging");
 	dragging_clone.remove();
 
-	// delete empty groups
+	// delete empty containers
 	var drag_containers = document.querySelectorAll(".drag_container");
 	for (var i = 0; i < drag_containers.length; i++) {
-		if (drag_containers[i].children.length <= 1 && !drag_containers[i].classList.contains("drag_create_container")) {
-			drag_containers[i].nextElementSibling.remove();
-			drag_containers[i].remove();
+		if (drag_containers[i].children.length <= 0 && !drag_containers[i].classList.contains("drag_create_container")) {
+			drag_containers[i].parentElement.nextElementSibling.remove();
+			drag_containers[i].parentElement.remove();
 		}
 	}
 
 	// ########################################################################################
 	// custom handling
-	var json = window.localStorage.getItem("user_data");
+	var json = window.localStorage.getItem(location.pathname);
 	var data = JSON.parse(json);
 
 	// delete element
@@ -74,29 +74,22 @@ function dragEnd(e) {
 
 	// create new container
 	else if (target.parentElement.classList.contains("drag_create_container")) {
-		// get method
-		if (target_store.container_index == -1) var defiend_class = classMap[target_store.starting_container.type];
-		else var defiend_class = classMap[data.elements[target_store.container_index].type];
-
-		// create html
-		var container = defiend_class.loadContainer();
-		var spacer = createSpacer();
-		body.insertBefore(container, target.parentElement);
-		body.insertBefore(spacer, container);
-		target.remove();
-		container.insertBefore(target, container.children[0]);
+		if (target_store.wrapper_index == -1) var container = createContainer(target_store.starting_container.type, target.parentElement, target);
+		else var container = createContainer(data.elements[target_store.wrapper_index].type, target.parentElement, target);
 
 		// store user data
-		var new_container_index = getPosition(container);
+		console.log(container)
+		var {wrapper_index, element_index} = getPosition(container);
+		console.log(element_index)
 
-		changeContainerData(data, target_store, new_container_index, null);
+		changeContainerData(data, target_store, wrapper_index, element_index);
 	}
 
 	// store new position in local storage
 	else {
-		var {container_index, element_index} = getPosition(target.parentElement, target);
+		var {wrapper_index, element_index} = getPosition(target.parentElement, target);
 
-		changeContainerData(data, target_store, container_index, element_index);
+		changeContainerData(data, target_store, wrapper_index, element_index);
 	}
 
 	// ########################################################################################

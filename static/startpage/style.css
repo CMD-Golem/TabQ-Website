@@ -12,6 +12,33 @@ body {
 	margin-bottom: 15px;
 }
 
+#container_list {
+	display: flex;
+	flex-direction: column;
+}
+
+.startpage_wrapper .button_box {
+	position: relative;
+}
+
+.edit_container_button {
+	display: none;
+	position: absolute;
+	top: 5px;
+	right: 10px;
+	height: 25px;
+	width: 25px;
+	background-color: transparent;
+	border-radius: 50%;
+	outline: none;
+	box-shadow: 0 0 15px black;
+}
+
+.edit_container_button img {
+	height: 100%;
+	width: 100%;
+}
+
 .spacer {
 	display: block;
 	width: 100%;
@@ -90,8 +117,12 @@ dialog > div {
 .edit_mode #edit_menu,
 .started_dragging #delete_element,
 .edit_mode .spacer::after,
-.edit_mode:not(.started_dragging) .create_element {
+.edit_mode:not(.started_dragging) .create_element,
+.edit_mode .edit_container_button {
 	display: block !important;
 }
 
+.edit_mode .spacer:hover::after {
+	text-decoration: underline;
+}
 
