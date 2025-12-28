@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>CSV to Standardnotes Spreadsheet</title>
+
+	<style>
+		label, button {
+			display: block;
+		}
+		.margin {
+			margin-bottom: 20px;
+		}
+	</style>
+</head>
+<body>
+	<h1>Convert CSV files to Standardnotes Spreadsheets</h1>
+	<p>The whole process is done locally and nothing will be uploaded. The whole code is inside this html file and can be viewed <a href="https://raw.githubusercontent.com/CMD-Golem/CMD-Golem-Website/refs/heads/master/help/csv_to_sn-spreadsheet.html">here</a>.</p>
+	<ol class="margin">
+		<li>Select the CSV file</li>
+		<li>Enter the seperator you used in your CSV file</li>
+		<li>Optional: Paste JSON from an existing Spreadsheet to add an additional sheet to it (Change note type of Spreadsheet to Plain Text and copy content)</li>
+		<li>Start convertion</li>
+		<li>Paste generated JSON in empty Plain Text Note in Standard Note</li>
+		<li>Change note type to Spreadsheet</li>
+	</ol>
+	<label><span>Select CSV file </span><input type="file" id="input" accept=".csv"></label>
+	<label class="margin"><span>Enter seperator </span><input type="text" id="seperator" value=","></label>
+	<label class="margin"><span>Optional: Existing table JSON </span><br><textarea id="existing"></textarea></label>
+	<button class="margin" onclick="convert()">Convert</button>
+	<div id="output" style="user-select: all;"></div>
+
+<script>
+
+function convert() { 
+	var reader = new FileReader();
+	reader.readAsText(document.getElementById("input").files[0],'UTF-8');
+
+	// read inputs
+	var seperator = document.getElementById("seperator").value;
+	var existing_table = document.getElementById("existing").value;
+
+	try {
+		// initialize empty table object
+		if (existing_table == "") {
+			var sheet_index = 0
+			var table = {
+				sheets: [{
+					name: "Sheet1",
+					rows: []
+				}],
+				rows: 75,
+				columns: 26
+			}
+		}
+		// add existing sheets to table
+		else {
+			var table = JSON.parse(existing_table);
+			var sheet_index = table.sheets.push({name:"New Sheet", rows:[]}) -1;
+		}
+	}
+	catch (e) {
+		// catch errors
+		alert("The provided json table is damaged!");
+		console.log(e);
+	}
+
+	reader.onload = readerEvent => {
+		try {
+			var csv = readerEvent.target.result;
+
+			// fix old Mac \r and windows \r\n
+			csv = csv.replaceAll("\r", "\n");
+			// fix windows
+			csv = csv.replaceAll("\n\n", "\n");
+			// create array of rows
+			var rows_array = csv.split("\n");
+
+			// size of table
+			var rows = rows_array.length;
+			var cols = rows_array[0].indexOf(seperator);
+
+			if (rows > 75 || cols > 26) alert("Standard Notes recommands a maximum of 75 rows and 26 columns to prevent data loss");
+
+			// create cells
+			for (var i = 0; i < rows_array.length; i++) {
+				// create array of cells
+				var cells_array = rows_array[i].split(seperator);
+				// initialize row object
+				var row = {index:i, cells:[]}
+
+				// fill row object with cell objects if content isnt empty
+				for (var j = 0; j < cells_array.length; j++) {
+					if (cells_array[j] != "") row.cells.push({value:cells_array[j], index:j});
+				}
+
+
+				// add row object to table object if cells inside
+				if (row.cells.length != 0) table.sheets[sheet_index].rows.push(row);
+			}
+
+			// output json table
+			document.getElementById("output").innerHTML = JSON.stringify(table);
+		}
+		catch (e) {
+			// catch errors
+			alert("The file is damaged or the seperator doesnt match!");
+			console.log(e);
+		}
+	}
+}
+
+// {
+// 	"sheets": [{
+// 		"name": "Sheet1",
+// 		"rows": [{
+// 			"index": 0,
+// 			"cells": [
+// 				{"value": "Item1", "index": 0},
+// 				{"value": "Item2", "index": 1}
+// 			]
+// 		},
+// 		{
+// 			"index": 1,
+// 			"cells": [
+// 				{"value": "Item3", "index": 0},
+// 				{"value": "Item4", "index": 1}
+// 			]
+// 		},
+// 		{
+// 			"index": 3,
+// 			"cells": [
+// 				{"value": "Item5", "index": 3},
+// 				{"value": "Item6", "index": 4}
+// 			]
+// 		}]
+// 	}],
+// 	"rows": 75,
+// 	"columns": 26
+// }
+
+</script>
+	
+</body>
+</html>

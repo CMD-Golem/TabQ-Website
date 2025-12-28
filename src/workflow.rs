@@ -22,6 +22,7 @@ struct EnvData {
 	secret: String,
 	temp_dir: String,
 	prod_dir: String,
+	github_user_agent: String,
 	git_ref: String,
 	branch: String,
 	repo_map: HashMap<String, String>,
@@ -56,19 +57,121 @@ pub fn router() -> Router {
 		secret: var("GITHUB_WEBHOOK_SECRET").expect("[Workflow] Missing GITHUB_WEBHOOK_SECRET env var"),
 		temp_dir: var("TEMP_DIR").expect("[Workflow] Missing TEMP_DIR env var"),
 		prod_dir: var("PROD_DIR").expect("[Workflow] Missing PROD_DIR env var"),
+		github_user_agent: var("GITHUB_USER_AGENT").expect("[Workflow] Missing GITHUB_USER_AGENT env var"),
 		git_ref: format!("refs/heads/{}", branch),
 		branch: branch,
 		repo_map: repo_map,
 		local_map: local_map,
 	};
 
+	// do auto refresh from compare after restart when env var is set
+	match var("AUTO_FETCH") {
+		Ok(value) if value.to_ascii_lowercase() == "true" => {
+			let _ = refresh_from_compare(&env_data);
+			()},
+		Ok(_) => (),
+		Err(_) => (),
+	};
+
+	// return router
 	return Router::new()
-		.route("/refresh-frontend", post(refresh))
+		.route("/refresh-from-compare", post(refresh_from_compare_bearer))
+		.route("/refresh-from-webhook", post(refresh_from_webhook))
 		.with_state(env_data);
 }
 
-// hot refresh static files
-async fn refresh(State(env_data): State<EnvData>, headers: HeaderMap, body: String) -> Result<Response, Response> {
+async fn refresh_from_compare_bearer(State(env_data): State<EnvData>, headers: HeaderMap) -> Result<Response, Response> {
+	// check signature
+	let header_signature = headers
+		.get(axum::http::header::AUTHORIZATION)
+		.ok_or_else(|| error::generic_unauthorized_error("[Workflow] Bearer required"))?
+		.as_bytes()
+		.strip_prefix(b"Bearer ")
+		.ok_or_else(|| error::generic_unauthorized_error("[Workflow] Bearer required"))?;
+
+	let signature_bytes = hex::decode(header_signature)
+		.map_err(|e| error::map_hex_error(e, "Workflow"))?;
+
+	let mac = Hmac::<Sha256>::new_from_slice(env_data.secret.as_bytes())
+		.map_err(|_e| error::generic_unauthorized_error("[Workflow4] Invalid Bearer length"))?;
+	// mac.update(body.as_bytes());
+
+	if mac.verify_slice(&signature_bytes).is_err() {
+		return Err(error::generic_unauthorized_error("[Workflow5] Bearer invalied"));
+	}
+
+	return refresh_from_compare(&env_data).await;
+}
+
+async fn refresh_from_compare(env_data: &EnvData) -> Result<Response, Response> {
+	let client = reqwest::Client::new();
+	for (repo_name, frontend_folder) in &env_data.repo_map {
+		// get latest tag
+		let tag_res = client.request(reqwest::Method::GET, format!("https://api.github.com/repos/{repo_name}/tags"))
+			.header(reqwest::header::ACCEPT, "application/vnd.github+json")
+			.header(reqwest::header::USER_AGENT, &env_data.github_user_agent)
+			.header("X-GitHub-Api-Version", "2022-11-28")
+			.send().await.unwrap()
+			.text().await.unwrap();
+
+		let tag_obj: serde_json::Value = serde_json::from_str(&tag_res).unwrap();
+		let tag_name = tag_obj[0]["name"].as_str().unwrap();
+
+		// get changed files
+		let compare_res = client.request(reqwest::Method::GET, format!("https://api.github.com/repos/{repo_name}/compare/{tag_name}...{}", env_data.branch))
+			.header(reqwest::header::ACCEPT, "application/vnd.github+json")
+			.header(reqwest::header::USER_AGENT, &env_data.github_user_agent)
+			.header("X-GitHub-Api-Version", "2022-11-28")
+			.send().await.unwrap()
+			.text().await.unwrap();
+
+		let compare_obj: serde_json::Value = serde_json::from_str(&compare_res).unwrap();
+
+		let status = compare_obj["status"].as_str().expect("msg");
+		println!("{status}");
+		if status != "ahead" {
+			println!("[Worflow] No files changed in {repo_name}, status:{status}");
+			return Ok((StatusCode::OK, format!("No files changed in {repo_name}")).into_response());
+		}
+
+		// check total commits dont exide maximum
+		let total_commits = compare_obj["total_commits"].as_u64().expect("msg");
+
+		if total_commits >= 250 {
+			eprintln!("[Worflow] There are more then 250 new commits from the latest tag. Please update manually.");
+			return Ok((StatusCode::UNPROCESSABLE_ENTITY, format!("More then 250 allowed commits")).into_response());
+		}
+
+		println!("[Worflow] Loading {total_commits} commits from {repo_name}");
+
+		// fill hashset
+		let mut added_files: HashSet<String> = HashSet::new();
+		let mut modified_files: HashSet<String> = HashSet::new();
+		let mut removed_files: HashSet<String> = HashSet::new();
+
+		for file in compare_obj["files"].as_array().expect("msg") {
+			let filename = file["filename"].as_str().expect("msg");
+
+			if !filename.starts_with(frontend_folder) {
+				continue;
+			}
+
+			match file["status"].as_str() {
+				Some(status) if status == "added" => added_files.insert(filename.to_string()),
+				Some(status) if status == "removed" => removed_files.insert(filename.to_string()),
+				Some(_) => modified_files.insert(filename.to_string()),
+				None => continue,
+			};
+		}
+
+		let _ = download_files(env_data, modified_files, added_files, removed_files, repo_name, frontend_folder).await;
+	}
+
+	return Ok((StatusCode::OK).into_response());
+}
+
+// trigger refresh via github webhook
+async fn refresh_from_webhook(State(env_data): State<EnvData>, headers: HeaderMap, body: String) -> Result<Response, Response> {
 	// check signature
 	let header_signature = headers
 		.get("x-hub-signature-256")
@@ -119,13 +222,34 @@ async fn refresh(State(env_data): State<EnvData>, headers: HeaderMap, body: Stri
 	for commit in commits {
 		let id = commit["id"].as_str().unwrap_or_default();
 		let message = commit["message"].as_str().unwrap_or_default();
-		println!("[Workflow7] Loading commit {message}, ID: {id}");
+		println!("[Workflow7] Loading commit {message}\n{repo_name}, ID: {id}");
 
 		create_hashset(commit, "added", &mut added_files, frontend_folder);
 		create_hashset(commit, "modified", &mut modified_files, frontend_folder);
 		create_hashset(commit, "removed", &mut removed_files, frontend_folder);
 	}
 
+	return download_files(&env_data, modified_files, added_files, removed_files, repo_name, frontend_folder).await;
+}
+
+fn create_hashset(commit: &serde_json::Value, key: &str, hashset: &mut HashSet<String>, frontend_folder: &str) {
+	 if let Some(files) = commit[key].as_array() {
+		for file in files.iter().filter_map(|v| v.as_str()) {
+			if file.starts_with(frontend_folder) {
+				hashset.insert(file.to_string());
+			}
+		}
+	}
+}
+
+async fn download_files(
+	env_data: &EnvData,
+	modified_files: HashSet<String>,
+	mut added_files: HashSet<String>,
+	mut removed_files: HashSet<String>,
+	repo_name: &str,
+	frontend_folder: &str
+) -> Result<Response, Response> {
 	// download new and changed files
 	let temp_dir = Path::new(&env_data.temp_dir);
 	let client = reqwest::Client::new();
@@ -230,14 +354,4 @@ async fn refresh(State(env_data): State<EnvData>, headers: HeaderMap, body: Stri
 	println!("[Workflow17] Finished update");
 
 	return Ok((StatusCode::OK).into_response());
-}
-
-fn create_hashset(commit: &serde_json::Value, key: &str, hashset: &mut HashSet<String>, frontend_folder: &str) {
-	 if let Some(files) = commit[key].as_array() {
-		for file in files.iter().filter_map(|v| v.as_str()) {
-			if file.starts_with(frontend_folder) {
-				hashset.insert(file.to_string());
-			}
-		}
-	}
 }

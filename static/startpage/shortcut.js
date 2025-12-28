@@ -47,6 +47,7 @@ class Shortcut {
 			grid-gap: var(--gap);
 			padding: var(--padding);
 			width: calc(var(--cols) * var(--width));
+			max-width: calc(100% - 40px);
 		}
 
 		.shortcut_link, .shortcut_create {
