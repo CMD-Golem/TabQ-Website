@@ -23,7 +23,7 @@ async fn main() {
 	let api = Router::new()
 		// .nest("/infomaniakmail", infomaniakmail::router().await)
 		.nest("/magazines", magazines::router())
-		.nest("/workflow", workflow::router())
+		.nest("/workflow", workflow::router().await)
 		.route("/health", get(health))
 		.route("/test", any(test));
 

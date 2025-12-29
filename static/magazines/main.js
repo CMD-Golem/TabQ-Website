@@ -3,8 +3,13 @@ var el_week = document.getElementById("week");
 var el_main = document.querySelector("main");
 
 function load() {
+	// account for kw1 starting in dezember
+	var date = new Date();
+	date.setHours(0, 0, 0, 0);
+	date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+	var current_year = date.getFullYear();
+
 	// show year selection
-	var current_year = new Date().getFullYear();
 	while (current_year - 2013 >= 0) {
 		var element = document.createElement('option');
 		element.value = current_year;
@@ -28,11 +33,11 @@ load();
 function getWeeks(year) {
 	el_week.innerHTML = "";
 	var date = new Date();
+	date.setHours(0, 0, 0, 0);
+	date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
 
 	// get current week
 	if (year == date.getFullYear()) {
-		date.setHours(0, 0, 0, 0);
-		date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
 		var week1 = new Date(date.getFullYear(), 0, 4);
 		var current_week = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
 	}
@@ -64,7 +69,7 @@ async function loadCoop() {
 	window.localStorage.setItem("selected_week", `${year}-${week}`);
 
 	// get publication date
-    var date = new Date(year, 0, 4);
+	var date = new Date(year, 0, 4);
 	date.setDate(date.getDate() - (date.getDay() || 7) + 1); // go to monday of first week
 	date.setDate(date.getDate() + (week - 1) *7 + fetch_amount * 4); // monday of selected week + half of fetched amount
 
@@ -124,7 +129,7 @@ async function findDate(date, week, fetch_amount, loop_fix) {
 		else needs_newer = false;
 	}
 
-	console.log(loop_fix)
+	console.log("Loop fix: " + loop_fix)
 
 	// return if found
 	if (publication != undefined) return publication;
@@ -147,7 +152,7 @@ async function loadMigros() {
 
 	// List with links to images of all pages: https://reader3.isu.pub/m-magazin/migros-magazin-45-2024-d-os/reader3_4.json
 	// New link since 46-2025 https://publication.issuu.com/m-magazin/migros-magazin-46-2025-d-os/reader4.json
-	var magazin_load = await fetch(`https://publication.issuu.com/m-magazin/migros-magazin-${week}-${year}-d-os/reader4.json`);
+	var magazin_load = await fetch(`https://publication.issuu.com/m-magazin/migros-magazin-${week.padStart(2, "0")}-${year}-d-os/reader4.json`);
 
 	if (magazin_load.status != 200) {
 		console.error(magazin_load);

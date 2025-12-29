@@ -6,11 +6,18 @@ use serde_json;
 use reqwest;
 use hex;
 
+pub fn generic_request_error(err: &str) -> Response {
+	let body = err.to_string();
+
+	eprintln!("{body}");
+	return (StatusCode::BAD_REQUEST, body).into_response();
+}
+
 pub fn generic_unauthorized_error(err: &str) -> Response {
 	let body = err.to_string();
 
 	eprintln!("{body}");
-	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
+	return (StatusCode::UNAUTHORIZED, body).into_response();
 }
 
 pub fn map_reqwest_error(err: reqwest::Error, source: &str) -> Response {
