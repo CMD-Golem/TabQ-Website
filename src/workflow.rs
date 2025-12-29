@@ -339,6 +339,7 @@ async fn download_files(
 
 
 	// remove file from prod
+	let mut count_removed = 0;
 	let prod_dir = match env_data.local_map.get(repo_name) {
 		Some(folder) => Path::new(&env_data.prod_dir).join(folder),
 		None => return Err(error::generic_request_error("[Workflow-d7] Repository is not in local map")),
@@ -350,12 +351,14 @@ async fn download_files(
 		let prod_path = prod_dir.join(&file.replace(frontend_folder, ""));
 
 		match fs::remove_file(&prod_path).await {
-			Ok(_) => (),
+			Ok(_) => count_removed += 1,
 			Err(e) => eprintln!("[Workflow-d8] {file} {e}"),
 		}
 	}
 
 	// move temp to prod
+	let mut count_added = 0;
+
 	for file in added_files {
 		let temp_path = temp_dir.join(&file);
 		let prod_path = prod_dir.join(&file.replace(frontend_folder, ""));
@@ -363,7 +366,7 @@ async fn download_files(
 		// create parent folders
 		let parent_folder = prod_path.parent().unwrap_or(&prod_dir);
 		match fs::create_dir_all(parent_folder).await {
-			Ok(_) => (),
+			Ok(_) => count_added += 1,
 			Err(e) => {
 				eprintln!("[Workflow-d9] {file} {e}");
 				continue;
@@ -377,7 +380,7 @@ async fn download_files(
 		}
 	}
 
-	println!("[Workflow-d11] Finished update");
+	println!("[Workflow-d11] Finished update with {count_added} added/modified and {count_removed} removed files");
 
 	return Ok((StatusCode::OK).into_response());
 }
