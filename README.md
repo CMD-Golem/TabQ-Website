@@ -13,7 +13,8 @@ Read magazines from Migros and Coop.
 
 ## API/Workflow
 Update the static frontend without rebuilding the backend.
-GET /refresh-from-compare: Compare latest tag and provided GITHUB_BRANCH and updated changed files
+
+GET /refresh-from-compare: Compare latest tag and provided GITHUB_BRANCH and updated changed files<br>
 POST /refresh-from-webhook: Listen with GITHUB_WEBHOOK for pushes to GITHUB_BRANCH and update changed files
 
 | Env | Description | Example |
