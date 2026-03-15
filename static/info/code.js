@@ -68,7 +68,7 @@ async function sendForm() {
 	else {
 		var error = await response.text();
 		console.error(error);
-		alert("An error has occurred: " + error);
+		alert("An error has occurred.\nPlease contact me at support@tabq.ch");
 	}
 }
 

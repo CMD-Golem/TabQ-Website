@@ -4,10 +4,6 @@ Main website Monorepo
 ## Startpage
 Quick access to links. Extendable with plugins.
 
-## Alias
-Quickly exchange Infomaniak email addresses.<br>
-Work in progress.
-
 ## Magazines
 Read magazines from Migros and Coop.
 
