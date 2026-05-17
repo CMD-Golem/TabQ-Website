@@ -249,6 +249,6 @@ import_data.onchange = e => {
 function exportData(name) {
 	var link = document.createElement('a');
 	link.download = name + ".json";
-	link.href = "data:text/plain;charset=utf-8," + window.localStorage.getItem(location.pathname);
+	link.href = "data:text/plain;charset=utf-8," + encodeURIComponent(window.localStorage.getItem(location.pathname));
 	link.click();
 }

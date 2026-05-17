@@ -15,7 +15,6 @@ use std;
 mod magazines;
 mod workflow;
 mod error;
-// mod infomaniakmail;
 
 
 #[tokio::main]

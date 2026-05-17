@@ -110,7 +110,7 @@ class Shortcut {
 
 		// edit container elements
 		var create_button = document.createElement("button");
-		create_button.innerHTML = '<img src="img/add.svg">';
+		create_button.innerHTML = '<img src="/startpage/img/add.svg">';
 		create_button.style.setProperty("right", "10px");
 		create_button.classList.add("edit_container_button");
 		create_button.addEventListener("click", () => {
@@ -118,7 +118,7 @@ class Shortcut {
 		});
 
 		var edit_button = document.createElement("button");
-		edit_button.innerHTML = '<img src="img/edit.svg">';
+		edit_button.innerHTML = '<img src="/startpage/img/edit.svg">';
 		create_button.style.setProperty("right", "40px");
 		edit_button.classList.add("edit_container_button");
 		edit_button.addEventListener("click", () => {

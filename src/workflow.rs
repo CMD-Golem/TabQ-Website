@@ -6,7 +6,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use hex;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, KeyInit};
 use http::{HeaderMap, StatusCode};
 use reqwest;
 use serde_json;
@@ -159,7 +159,7 @@ async fn refresh_from_compare(env_data: &EnvData) -> Result<Response, Response> 
 		if let Some(files) = compare_obj["files"].as_array() {
 			for file in files {
 				let filename = match file["filename"].as_str() {
-					Some(name) if name.starts_with(frontend_folder) => name,
+					Some(name) if Path::new(name).starts_with(frontend_folder) => name,
 					_ => continue,
 				};
 
@@ -260,7 +260,7 @@ fn create_hashset(commit: &serde_json::Value, key: &str, hashset: &mut HashSet<S
 	
 	for file in files {
 		match file.as_str() {
-			Some(file) if file.starts_with(frontend_folder) => {
+			Some(file) if Path::new(file).starts_with(frontend_folder) => {
 				hashset.insert(file.to_string());
 			},
 			_ => continue,
@@ -347,40 +347,53 @@ async fn download_files(
 
 	removed_files.extend(modified_files);
 
-	for file in removed_files {
-		let prod_path = prod_dir.join(&file.replace(frontend_folder, ""));
+	for file in &removed_files {
+		let prod_path = match Path::new(file).strip_prefix(frontend_folder) {
+			Ok(path) => prod_dir.join(path),
+			Err(_) => {
+				eprintln!("[Workflow-d8] File is not in defined frontend folder");
+				continue;
+			}
+		};
 
 		match fs::remove_file(&prod_path).await {
 			Ok(_) => count_removed += 1,
-			Err(e) => eprintln!("[Workflow-d8] {file} {e}"),
+			Err(e) => eprintln!("[Workflow-d9] {file} {e}"),
 		}
 	}
 
 	// move temp to prod
 	let mut count_added = 0;
 
-	for file in added_files {
-		let temp_path = temp_dir.join(&file);
-		let prod_path = prod_dir.join(&file.replace(frontend_folder, ""));
+	for file in &added_files {
+		let prod_path = match Path::new(file).strip_prefix(frontend_folder) {
+			Ok(path) => prod_dir.join(path),
+			Err(_) => {
+				eprintln!("[Workflow-d10] File is not in defined frontend folder");
+				continue;
+			}
+		};
 
 		// create parent folders
 		let parent_folder = prod_path.parent().unwrap_or(&prod_dir);
 		match fs::create_dir_all(parent_folder).await {
 			Ok(_) => count_added += 1,
 			Err(e) => {
-				eprintln!("[Workflow-d9] {file} {e}");
+				eprintln!("[Workflow-d11] {file} {e}");
 				continue;
 			}
 		};
 
 		// move file
+		let temp_path = temp_dir.join(&file);
+
 		match fs::rename(&temp_path, &prod_path).await {
 			Ok(_) => (),
-			Err(e) => eprintln!("[Workflow-d10] {file} {e}"),
+			Err(e) => eprintln!("[Workflow-d12] {file} {e}"),
 		}
 	}
 
-	println!("[Workflow-d11] Finished update with {count_added} added/modified and {count_removed} removed files");
+	println!("[Workflow-d13] Finished update with {count_added} added/modified and {count_removed} removed files");
 
 	return Ok((StatusCode::OK).into_response());
 }
