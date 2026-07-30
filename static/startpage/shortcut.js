@@ -119,7 +119,7 @@ class Shortcut {
 
 		var edit_button = document.createElement("button");
 		edit_button.innerHTML = '<img src="/startpage/img/edit.svg">';
-		create_button.style.setProperty("right", "40px");
+		create_button.style.setProperty("right", "45px");
 		edit_button.classList.add("edit_container_button");
 		edit_button.addEventListener("click", () => {
 			Shortcut.editContainer(container);
