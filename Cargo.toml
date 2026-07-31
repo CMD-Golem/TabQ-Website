@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0", default-features = false, features = ["tokio", "http1"]}
+base64 = "0"
 futures-util = "0"
 hex = "0"
 hmac = "0"
@@ -18,3 +19,4 @@ tokio = { version = "1", features = ["fs", "io-util", "rt-multi-thread", "macros
 tokio-stream = "0"
 tower = "0"
 tower-http = { version = "0", features = ["fs"] }
+tower-cookies = { version = "0", features = ["private"]}

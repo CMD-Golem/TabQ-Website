@@ -14,15 +14,16 @@ use std;
 
 mod magazines;
 mod workflow;
+mod aliasmanager;
 mod error;
 
 
 #[tokio::main]
 async fn main() {
 	let api = Router::new()
-		// .nest("/infomaniakmail", infomaniakmail::router().await)
 		.nest("/magazines", magazines::router())
 		.nest("/workflow", workflow::router().await)
+		.nest("/aliasmanager", aliasmanager::router().await)
 		.route("/health", get(health))
 		.route("/test", any(test));
 
