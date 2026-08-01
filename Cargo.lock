@@ -20,6 +20,7 @@ checksum = "b169f7a6d4742236a0a00c541b845991d0ac43e546831af1249753ab4c3aa3a0"
 dependencies = [
  "cfg-if",
  "cipher",
+ "cpufeatures 0.2.17",
 ]
 
 [[package]]

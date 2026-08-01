@@ -6,8 +6,14 @@ const bearer = document.getElementById("bearer");
 const alias_list = document.getElementById("alias_list");
 
 async function init() {
-	var active_aliases = new Set(getAlias());
-	var all_aliases = getFilter();
+	// get cookie data
+	var cookie_not_set = await getCookieData();
+
+	if (cookie_not_set) return;
+
+	// build aliases
+	var active_aliases = new Set(await getAlias());
+	var all_aliases = await getFilter();
 
 	var aliases = all_aliases.map(alias => ({
 		value: alias,
@@ -15,9 +21,20 @@ async function init() {
 	}));
 
 	for (var i = 0; i < aliases.length; i++) {
+		var alias_el = document.createElement("alias");
 
+		if (aliases[i].active) var toggle = " checked";
+		else var toggle = "";
 
-		var element = array[i];
+		alias_el.innerHTML = `<span>${aliases[i].value}</span>
+			<button title="copy" class="alias_copy"></button>
+			<button title="delete" class="alias_delete"></button>
+			<div class="toggle">
+				<input type="checkbox" name="alias_toggle" title="toggle active"${toggle}>
+				<label for="alias_toggle"></label>
+			</div>`;
+		
+		alias_list.appendChild(alias_el);
 	}
 }
 
@@ -28,16 +45,17 @@ async function getCookieData() {
 
 	if (res.status != 200) {
 		console.error(res);
-		return;
+		return true;
 	}
 
 	var response = await res.json();
-	console.log(response)
 
 	filter_mailbox.value = response.filter_mailbox;
 	alias_mailbox.value = response.alias_mailbox;
 	mail_hosting_id.value = response.mail_hosting_id;
 	bearer.value = response.bearer;
+
+	return false;
 }
 
 async function updateCookieData() {
@@ -109,9 +127,6 @@ async function getFilter() {
 	}
 
 	var response = await res.json();
-	console.log(response)
-	console.log(response.data.scripts)
-
 	for (var i = 0; i < response.data.scripts.length; i++) {
 		var script = response.data.scripts[i];
 
