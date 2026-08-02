@@ -7,9 +7,71 @@ body {
 	background-color: #000;
 }
 
+h1 {
+	font-size: 20px;
+	margin: 0;
+	flex-grow: 1;
+}
+
+button, input {
+	border-radius: 5px;
+	padding: 5px;
+	color: inherit;
+	background-color: unset;
+	border: unset;
+	outline: none;
+}
+button:hover, input {
+	background-color: #3b3b3b;
+}
+
+nav, footer {
+	display: flex;
+	position: fixed;
+	align-items: center;
+	z-index: 100;
+	background-color: #000;
+	padding: 5px 10px;
+	width: calc(100vw - 20px);
+	max-width: 600px
+}
+
+nav {
+	--nav_heigth: 50px;
+	height: var(--nav_heigth);
+	top: 0;
+	gap: 5px;
+}
+
+nav button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--nav_heigth);
+	height: var(--nav_heigth);
+	font-size: 30px;
+}
+
+footer {
+	--footer_heigth: 35px;
+	height: var(--footer_heigth);
+	bottom: 0;
+}
+
+footer button {
+	display: flex;
+	margin-left: 5px;
+	height: 26px;
+	width: 26px;
+	align-items: center;
+	justify-self: center;
+	font-size: 20px;
+}
+
+/* ############################################### */
 #alias_list {
-	margin: 20px;
-	max-width: 500px;
+	margin: 60px 20px;
+	max-width: 600px;
 }
 
 alias {
@@ -26,19 +88,27 @@ alias {
 	margin-bottom: 10px;
 }
 
+alias.search_hidden {
+	display: none;
+}
+alias.highlight {
+	background-color: #4BD865;
+}
+
 alias span {
+	display: inline-block;
+	height: 100%;
+	align-content: center;
 	font-size: 15px;
 	flex: 1 1 auto;
+	overflow-x: auto;
+	text-wrap: nowrap;
 }
 
 alias button {
 	height: var(--alias_heigth);
 	width: var(--alias_heigth);
-	padding: 5px;
-	border-radius: 5px;
 	flex: 0 0 auto;
-	background-color: unset;
-	border: unset;
 	background-position: center;
 	background-repeat: no-repeat;
 }
@@ -50,11 +120,7 @@ alias button {
 	background-image: url(delete.svg);
 	background-size: 70%;
 }
-alias button:hover {
-	background-color: #3b3b3b;
-}
 
-/* ############################################### */
 /* Toggle https://csstoggles.github.io/, id modelSh10, index 44 */
 .toggle {
 	position: relative;
@@ -81,7 +147,7 @@ alias button:hover {
 	z-index: 2;
 	line-height: var(--toggle_height); /*42px*/
 	font-size: calc(var(--toggle_height) /1.6); /*26px*/
-	color: #aaa;
+	color: #fff;
 }
 .toggle input[type="checkbox"] {
 	position: absolute;
@@ -93,6 +159,9 @@ alias button:hover {
 	cursor: pointer;
 	opacity: 0;
 }
+.toggle input[type="checkbox"]:disabled {
+	cursor: not-allowed;
+}
 .toggle label {
 	position: relative;
 	display: flex;
@@ -102,8 +171,7 @@ alias button:hover {
 	content: '';
 	width: calc(var(--toggle_height) /0.525); /*80px*/
 	height: var(--toggle_height); /*42px*/
-	box-shadow: 0 0 calc(var(--toggle_height) /42) calc(var(--toggle_height) /21) #0001; /*1px 2px*/
-	background: #eee;
+	background: #3b3b3b;
 	position: relative;
 	display: inline-block;
 	border-radius: calc(var(--toggle_height) /0.9); /*46px*/
@@ -119,11 +187,7 @@ alias button:hover {
 	top: 0;
 	z-index: 5;
 	background: #fff;
-	box-shadow: 0 0 calc(var(--toggle_height) /8.4) #0002; /*5px*/
 	transition: 0.2s ease-in;
-}
-.toggle input[type="checkbox"]:hover + label:after {
-	box-shadow: 0 calc(var(--toggle_height) /21) calc(var(--toggle_height) /2.8) 0 #0002, 0 calc(var(--toggle_height) /14) calc(var(--toggle_height) /5.3) 0 #0001; /*2px 15px 3px 8px*/
 }
 .toggle input[type="checkbox"]:checked + label:before {
 	transition: 0.1s 0.2s ease-in;
@@ -131,4 +195,69 @@ alias button:hover {
 }
 .toggle input[type="checkbox"]:checked + label:after {
 	left: calc(var(--toggle_height) /1.1); /*38px*/
+}
+/* ############################################### */
+dialog {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	z-index: 101;
+	margin: 0;
+	transform: translate(-50%, -50%);
+	background-color: #000;
+	color: inherit;
+	padding: 30px 40px;
+	padding-bottom: 15px;
+	border: 1px solid #3b3b3b;
+	border-radius: 5px;
+	font-size: initial;
+	width: calc(100vw - 100px);
+	max-width: 450px;
+}
+
+dialog label {
+	display: block;
+	margin-top: 20px;
+}
+
+dialog .button_box {
+	margin-top: 20px;
+	display: flex;
+	justify-content: end;
+	align-items: end;
+	width: 100%;
+	gap: 5px;
+	flex-wrap: wrap;
+}
+
+dialog .button_box .button_box {
+	width: unset;
+	margin: 0;
+}
+
+dialog button {
+	padding: 8px 15px;
+	border: 1px solid #3b3b3b;
+}
+
+dialog input {
+	display: block;
+	width: calc(100% - 10px);
+	margin: 5px 0;
+}
+
+dialog .alias_scrollbox {
+	margin-top: 20px;
+	padding-bottom: 10px;
+	overflow-x: auto;
+}
+
+dialog .alias_scrollbox span {
+	display: block;
+	min-width: fit-content;
+	padding: 5px;
+	outline: none;
+	border-radius: 5px;
+	background-color: #3b3b3b;
+	text-wrap: nowrap;
 }

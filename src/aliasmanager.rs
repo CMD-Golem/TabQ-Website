@@ -18,7 +18,6 @@ use serde::{Serialize, Deserialize};
 use std::env::var;
 use serde_json;
 
-
 use crate::error;
 
 #[derive(Serialize, Deserialize)]
@@ -27,10 +26,11 @@ struct CookieData {
 	alias_mailbox: String,
 	mail_hosting_id: String,
 	bearer: String,
+	alias_domain: String,
 }
 
 impl CookieData {
-	fn get(key_bytes: Vec<u8>, cookies: Cookies) -> Result<CookieData, Response> {
+	fn get(key_bytes: Vec<u8>, cookies: &Cookies) -> Result<CookieData, Response> {
 		let key = Key::try_from(key_bytes.as_slice()).map_err(|e| error::map_cookie_error(e, "Alias Manager"))?;
 
 		let Some(cookie) = cookies.private(&key).get("data") else {
@@ -59,7 +59,7 @@ pub async fn router() -> Router {
 }
 
 async fn get_cookie_data(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> Result<Response, Response> {
-	let mut data = CookieData::get(key_bytes, cookies)?;
+	let mut data = CookieData::get(key_bytes, &cookies)?;
 
 	if !data.bearer.is_empty() {
 		data.bearer = "*".to_string();
@@ -70,9 +70,19 @@ async fn get_cookie_data(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> 
 }
 
 async fn update_cookie_data(State(key_bytes): State<Vec<u8>>, cookies: Cookies, body: String) -> Result<Response, Response> {
+	let mut new_data: CookieData = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Alias Manager"))?;
 	let key = Key::try_from(key_bytes.as_slice()).map_err(|e| error::map_cookie_error(e, "Alias Manager"))?;
+	let data;
 
-	let cookie = Cookie::build(("data", body))
+	if new_data.bearer == "*".to_string() {
+		new_data.bearer = CookieData::get(key_bytes, &cookies)?.bearer;
+		data = serde_json::to_string(&new_data).map_err(|e| error::map_serde_error(e, "Alias Manager"))?;
+	}
+	else {
+		data = body;
+	}
+
+	let cookie = Cookie::build(("data", data))
 		.path("/api/aliasmanager/")
 		.secure(true)
 		.http_only(true)
@@ -84,7 +94,7 @@ async fn update_cookie_data(State(key_bytes): State<Vec<u8>>, cookies: Cookies, 
 }
 
 async fn get_alias(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> Result<Response, Response> {
-	let data = CookieData::get(key_bytes, cookies)?;
+	let data = CookieData::get(key_bytes, &cookies)?;
 	let client = reqwest::Client::new();
 	let fetch = client.get(format!("https://api.infomaniak.com/1/mail_hostings/{}/mailboxes/{}/aliases", data.mail_hosting_id, data.alias_mailbox))
 		.bearer_auth(data.bearer)
@@ -95,7 +105,7 @@ async fn get_alias(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> Result
 }
 
 async fn create_alias(State(key_bytes): State<Vec<u8>>, cookies: Cookies, body: String) -> Result<Response, Response> {
-	let data = CookieData::get(key_bytes, cookies)?;
+	let data = CookieData::get(key_bytes, &cookies)?;
 	let client = reqwest::Client::new();
 	let fetch = client.post(format!("https://api.infomaniak.com/1/mail_hostings/{}/mailboxes/{}/aliases", data.mail_hosting_id, data.alias_mailbox))
 		.body(body)
@@ -108,7 +118,7 @@ async fn create_alias(State(key_bytes): State<Vec<u8>>, cookies: Cookies, body: 
 }
 
 async fn remove_alias(State(key_bytes): State<Vec<u8>>, Path(alias): Path<String>, cookies: Cookies) -> Result<Response, Response> {
-	let data = CookieData::get(key_bytes, cookies)?;
+	let data = CookieData::get(key_bytes, &cookies)?;
 	let client = reqwest::Client::new();
 	let fetch = client.delete(format!("https://api.infomaniak.com/1/mail_hostings/{}/mailboxes/{}/aliases/{}", data.mail_hosting_id, data.alias_mailbox, alias))
 		.bearer_auth(data.bearer)
@@ -119,7 +129,7 @@ async fn remove_alias(State(key_bytes): State<Vec<u8>>, Path(alias): Path<String
 }
 
 async fn get_filter(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> Result<Response, Response> {
-	let data = CookieData::get(key_bytes, cookies)?;
+	let data = CookieData::get(key_bytes, &cookies)?;
 	let client = reqwest::Client::new();
 	let fetch = client.get(format!("https://api.infomaniak.com/1/mail_hostings/{}/mailboxes/{}/auth/filters", data.mail_hosting_id, data.filter_mailbox))
 		.bearer_auth(data.bearer)
@@ -130,7 +140,7 @@ async fn get_filter(State(key_bytes): State<Vec<u8>>, cookies: Cookies) -> Resul
 }
 
 async fn update_filter(State(key_bytes): State<Vec<u8>>, cookies: Cookies, body: String) -> Result<Response, Response> {
-	let data = CookieData::get(key_bytes, cookies)?;
+	let data = CookieData::get(key_bytes, &cookies)?;
 	let client = reqwest::Client::new();
 	let fetch = client.patch(format!("https://api.infomaniak.com/1/mail_hostings/{}/mailboxes/{}/auth/filters/scripts", data.mail_hosting_id, data.filter_mailbox))
 		.body(body)
