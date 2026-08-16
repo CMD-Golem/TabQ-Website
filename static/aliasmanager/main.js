@@ -119,7 +119,7 @@ function generateRandomString() {
 		.map(x => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36])
 		.join("");
 
-	var mail =  alias_text.innerText.toLowerCase().split("@");
+	var mail =  alias_text.innerText.split("@");
 	alias_text.innerText = `${mail[0]}-${random_string}@${mail[1]}`;
 }
 
@@ -146,7 +146,7 @@ function deleteAlias(el) {
 function search(value) {
 	for (var i = 0; i < alias_list.children.length; i++) {
 		var alias_el = alias_list.children[i];
-		if (!alias_el.firstElementChild.innerText.includes(value)) {
+		if (!alias_el.firstElementChild.innerText.includes(value.toLowerCase())) {
 			alias_el.classList.add("search_hidden");
 		}
 		else alias_el.classList.remove("search_hidden");

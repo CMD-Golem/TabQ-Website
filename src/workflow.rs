@@ -6,7 +6,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use hex;
-use hmac::{Hmac, Mac, KeyInit};
+use hmac::{Hmac, Mac};
 use http::{HeaderMap, StatusCode};
 use reqwest;
 use serde_json;
@@ -19,6 +19,7 @@ use std::{
 	path::Path
 };
 
+use crate::ReqwestConfig;
 use crate::error;
 
 #[derive(Clone)]
@@ -32,9 +33,10 @@ struct EnvData {
 	branch: String,
 	repo_map: HashMap<String, String>,
 	local_map: HashMap<String, String>,
+	reqwest: reqwest::Client,
 }
 
-pub async fn router() -> Router {
+pub async fn router(app: ReqwestConfig) -> Router {
 	// Generate repo map from env (determine if a file has to be considered)
 	let mut repo_map = HashMap::new();
 	let repo_map_str = var("REPO_MAP").expect("[Workflow] Missing REPO_MAP env var");
@@ -68,6 +70,7 @@ pub async fn router() -> Router {
 		branch: branch,
 		repo_map: repo_map,
 		local_map: local_map,
+		reqwest: app.reqwest,
 	};
 
 	// do auto refresh from compare after restart when env var is set to true
@@ -99,13 +102,11 @@ async fn refresh_from_compare_bearer(State(env_data): State<EnvData>, headers: H
 }
 
 async fn refresh_from_compare(env_data: &EnvData) -> Result<Response, Response> {
-	let client = reqwest::Client::new();
-
 	for (repo_name, frontend_folder) in &env_data.repo_map {
 		println!("[Worflow-c4] Loading commits from {repo_name}");
 
 		// get latest tag
-		let tag_obj = match fetch_json(format!("https://api.github.com/repos/{repo_name}/tags"), env_data, &client).await {
+		let tag_obj = match fetch_json(format!("https://api.github.com/repos/{repo_name}/tags"), env_data).await {
 			Ok(obj) => obj,
 			Err(e) => {
 				eprintln!("[Workflow-c5-{e}");
@@ -118,7 +119,7 @@ async fn refresh_from_compare(env_data: &EnvData) -> Result<Response, Response> 
 		};
 
 		// get changed files
-		let compare_obj = match fetch_json(format!("https://api.github.com/repos/{repo_name}/compare/{tag_name}...{}", env_data.branch), env_data, &client).await {
+		let compare_obj = match fetch_json(format!("https://api.github.com/repos/{repo_name}/compare/{tag_name}...{}", env_data.branch), env_data).await {
 			Ok(obj) => obj,
 			Err(e) => {
 				eprintln!("[Workflow-c7-{e}");
@@ -178,8 +179,8 @@ async fn refresh_from_compare(env_data: &EnvData) -> Result<Response, Response> 
 	return Ok((StatusCode::OK).into_response());
 }
 
-async fn fetch_json(url: String, env_data: &EnvData, client: &reqwest::Client) -> Result<serde_json::Value, String> {
-	let response = client.request(reqwest::Method::GET, url)
+async fn fetch_json(url: String, env_data: &EnvData) -> Result<serde_json::Value, String> {
+	let response = env_data.reqwest.request(reqwest::Method::GET, url)
 		.header(reqwest::header::ACCEPT, "application/vnd.github+json")
 		.header(reqwest::header::USER_AGENT, &env_data.github_user_agent)
 		.header("X-GitHub-Api-Version", "2022-11-28")
@@ -278,13 +279,12 @@ async fn download_files(
 ) -> Result<Response, Response> {
 	// download new and changed files
 	let temp_dir = Path::new(&env_data.temp_dir);
-	let client = reqwest::Client::new();
 	let repo_url = format!("https://raw.githubusercontent.com/{repo_name}/{}/", env_data.branch);
 
 	added_files.extend(modified_files.iter().cloned());
 
 	'file_loop: for file in &added_files {
-		let mut stream = match client.get(format!("{repo_url}{file}")).send().await {
+		let mut stream = match env_data.reqwest.get(format!("{repo_url}{file}")).send().await {
 			Ok(res) if res.status().is_success() => res,
 			Ok(_) => {
 				eprintln!("[Workflow-d1] Could not donwload {file}");

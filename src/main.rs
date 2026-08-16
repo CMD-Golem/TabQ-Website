@@ -17,13 +17,41 @@ mod workflow;
 mod aliasmanager;
 mod error;
 
+#[derive(Clone)]
+pub struct ReqwestConfig {
+	pub reqwest: reqwest::Client,
+}
+
+impl ReqwestConfig {
+	pub fn new() -> Self {
+		Self {
+			reqwest: Self::build(),
+		}
+	}
+
+	fn build() -> reqwest::Client {
+		// https://github.com/vercel/next.js/pull/88869/changes
+		let mut builder = reqwest::Client::builder();
+
+		builder = builder.tls_certs_merge(webpki_root_certs::TLS_SERVER_ROOT_CERTS.iter().map(
+			|der| {
+				reqwest::Certificate::from_der(der)
+					.expect("webpki_root_certs should parse correctly")
+			}),
+		);
+		builder.build().expect("failed to create HTTP client")
+	}
+}
+
 
 #[tokio::main]
 async fn main() {
+	let client = ReqwestConfig::new();
+
 	let api = Router::new()
-		.nest("/magazines", magazines::router())
-		.nest("/workflow", workflow::router().await)
-		.nest("/aliasmanager", aliasmanager::router().await)
+		.nest("/magazines", magazines::router(client.clone()))
+		.nest("/workflow", workflow::router(client.clone()).await)
+		.nest("/aliasmanager", aliasmanager::router(client.clone()).await)
 		.route("/health", get(health))
 		.route("/test", any(test));
 
