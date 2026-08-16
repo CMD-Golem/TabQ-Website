@@ -1,14 +1,15 @@
 use axum::{
 	http::StatusCode,
 	response::{IntoResponse, Response},
+	extract::State,
 	routing::post,
 	Router
 };
 use serde::Serialize;
 use http::HeaderMap;
 use serde_json;
-use reqwest;
 
+use crate::ReqwestConfig;
 use crate::error;
 
 #[derive(Serialize)]
@@ -18,21 +19,21 @@ struct Magazines {
 	publication_date: String,
 }
 
-pub fn router() -> Router {
+pub fn router(state: ReqwestConfig) -> Router {
 	return Router::new()
 		.route("/publications", post(publications))
-		.route("/pages", post(pages));
+		.route("/pages", post(pages))
+		.with_state(state);
 }
 
-async fn publications(headers: HeaderMap, body: String) -> Result<Response, Response> {
+async fn publications(State(state): State<ReqwestConfig>, headers: HeaderMap, body: String) -> Result<Response, Response> {
 	let json_body: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let date = json_body["date"].as_str().unwrap_or("");
 	let amount = json_body["amount"].as_u64().unwrap_or(5);
 
 	println!("[Magazines] {} fetched publications", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
 
-	let client = reqwest::Client::new();
-	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
+	let fetch = state.reqwest.post("https://epaper.coopzeitung.ch/epaper/1.0/findEditionsFromDateWithInlays")
 		.body(format!("{{\"editions\": [{{\"defId\": 1134,\"publicationDate\": \"{date}\"}}],\"maxHits\": {amount},\"startDate\": \"{date}\"}}"))
 		.send().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?
 		.text().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?;
@@ -56,14 +57,13 @@ async fn publications(headers: HeaderMap, body: String) -> Result<Response, Resp
 
 }
 
-async fn pages(headers: HeaderMap, body: String) -> Result<Response, Response> {
+async fn pages(State(state): State<ReqwestConfig>, headers: HeaderMap, body: String) -> Result<Response, Response> {
 	let request: serde_json::Value = serde_json::from_str(&body).map_err(|e| error::map_serde_error(e, "Magazines"))?;
 	let date = request["date"].as_str().unwrap_or("");
 
 	println!("[Magazines] {} fetched pages", headers.get("X-Forwarded-For").and_then(|value| value.to_str().ok()).unwrap_or("Unknow client"));
 
-	let client = reqwest::Client::new();
-	let fetch = client.post("https://epaper.coopzeitung.ch/epaper/1.0/getPages")
+	let fetch = state.reqwest.post("https://epaper.coopzeitung.ch/epaper/1.0/getPages")
 		.body(format!("{{\"screenInfo\":{{\"width\":1155,\"height\":1060}},\"editions\":[{{\"defId\":1134,\"publicationDate\":\"{date}\"}}]}}"))
 		.send().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?
 		.text().await.map_err(|e| error::map_reqwest_error(e, "Magazines"))?;

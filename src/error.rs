@@ -5,6 +5,7 @@ use axum::{
 use serde_json;
 use reqwest;
 use hex;
+use tower_cookies;
 
 pub fn generic_request_error(err: &str) -> Response {
 	let body = err.to_string();
@@ -40,4 +41,11 @@ pub fn map_hex_error(err: hex::FromHexError, source: &str) -> Response {
 
 	eprintln!("[{source}] {body}");
 	return (StatusCode::UNAUTHORIZED, body).into_response();
+}
+
+pub fn map_cookie_error(err: tower_cookies::cookie::KeyError, source: &str) -> Response {
+	let body = err.to_string();
+
+	eprintln!("[{source}] {body}");
+	return (StatusCode::INTERNAL_SERVER_ERROR, body).into_response();
 }
