@@ -1,4 +1,3 @@
-const filter_mailbox = document.getElementById("filter_mailbox");
 const alias_mailbox = document.getElementById("alias_mailbox");
 const mail_hosting_id = document.getElementById("mail_hosting_id");
 const bearer = document.getElementById("bearer");
@@ -17,7 +16,6 @@ async function getCookieData() {
 
 	var response = await res.json();
 
-	filter_mailbox.value = response.filter_mailbox;
 	alias_mailbox.value = response.alias_mailbox;
 	mail_hosting_id.value = response.mail_hosting_id;
 	bearer.value = response.bearer;
@@ -32,7 +30,7 @@ async function updateCookieData() {
 	document.getElementById("settings").close();
 
 	var body = {
-		filter_mailbox: filter_mailbox.value,
+		filter_mailbox: "catchall",
 		alias_mailbox: alias_mailbox.value,
 		mail_hosting_id: mail_hosting_id.value,
 		bearer: bearer.value,
@@ -45,7 +43,7 @@ async function updateCookieData() {
 	});
 
 	if (res.status != 200) {
-		error.innerText = res;
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
@@ -59,15 +57,15 @@ async function getAlias() {
 	var res = await fetch("/api/aliasmanager/alias");
 
 	if (res.status != 200) {
-		error.innerText = res;
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
-		return;
+		return [];
 	}
 
 	var response = await res.json();
-	return response.data.aliases
+	return response.data.aliases;
 }
 
 async function activateAlias(alias) {
@@ -77,15 +75,12 @@ async function activateAlias(alias) {
 	});
 
 	if (res.status != 200) {
-		error.innerText = res;
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
 		return;
 	}
-
-	var response = await res.json();
-	console.log(response)
 }
 
 async function deactivateAlias(alias) {
@@ -94,29 +89,35 @@ async function deactivateAlias(alias) {
 	});
 
 	if (res.status != 200) {
-		error.innerText = res;
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
 		return;
 	}
-
-	var response = await res.json();
-	console.log(response)
 }
 
 async function getFilter() {
 	var res = await fetch("/api/aliasmanager/filter");
 
-	if (res.status != 200) {
-		error.innerText = res;
+	if (res.status != 200 && res.status != 404) {
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
-		return;
+		return [];
+	}
+	
+	var response = await res.json();
+
+	if (res.status == 404 && response.error.code == "object_not_found_in_padl") {
+		error.innerHTML = `Create a <a target="_blank" href="https://faq.infomaniak.com/126">catch-all address</a> first!`;
+		error.parentElement.showModal();
+		
+		console.error(res);
+		return [];
 	}
 
-	var response = await res.json();
 	for (var i = 0; i < response.data.scripts.length; i++) {
 		var script = response.data.scripts[i];
 
@@ -152,7 +153,7 @@ async function updateFilter() {
 		old_name: "aliasmanagerfilter"
 	}
 
-	console.log(filter)
+	console.log(filter);
 
 	var res = await fetch("/api/aliasmanager/filter", {
 		method: "PATCH",
@@ -160,13 +161,10 @@ async function updateFilter() {
 	});
 
 	if (res.status != 200) {
-		error.innerText = res;
+		error.innerText = JSON.stringify(res);
 		error.parentElement.showModal();
 		
 		console.error(res);
 		return;
 	}
-
-	var response = await res.json();
-	console.log(response)
 }

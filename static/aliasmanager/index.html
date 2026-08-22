@@ -3,10 +3,12 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="color-scheme" content="dark only">
 	<title>Infomaniak Alias Manager</title>
-	<script defer src="api.js"></script>
-	<script defer src="main.js"></script>
-	<link rel="stylesheet" href="style.css">
+	<link rel="icon" href="./favicon.png">
+	<script defer src="./api.js"></script>
+	<script defer src="./main.js"></script>
+	<link rel="stylesheet" href="./style.css">
 </head>
 <body>
 	<nav>
@@ -34,20 +36,28 @@
 			</div>
 		</div>
 	</dialog>
-	<dialog id="settings" closedby="any">
+	<dialog id="settings" closedby="any" open>
 		<h1>Settings</h1>
-		<label for="bearer"><a href="https://manager.infomaniak.com/v3/ng/accounts/token/list">Bearer Token with access to the mail scope</a></label>
-		<input type="text" id="bearer" name="bearer">
-		<p>Enter the Infomaniak Manager and go to your desiered Mail Service - E-Mail Address. The link should look something like this:<br>
-		<code>https://manager.infomaniak.com/v3/mail/CLIENT_NUMBER/mail-service/MAIL_HOSTING_ID/mailboxes/_MAILBOX_NAME/dashboard/users</code></p>
-		<label for="filter_mailbox">MAILBOX_NAME where the filter should be (normally catchall)</label>
-		<input type="text" id="filter_mailbox" name="filter_mailbox">
-		<label for="alias_mailbox">MAILBOX_NAME where the aliases should be registered</label>
-		<input type="text" id="alias_mailbox" name="alias_mailbox">
-		<label for="mail_hosting_id">MAIL_HOSTING_ID of the desiered domain</label>
-		<input type="text" id="mail_hosting_id" name="mail_hosting_id">
-		<label for="alias_domain">The desiered domain name for aliases</label>
-		<input type="text" id="alias_domain" name="alias_domain">
+		<form>
+			<label for="password"><a target="_blank" href="https://manager.infomaniak.com/v3/ng/accounts/token/list">Bearer Token with access to the mail scope</a></label>
+			<input type="password" id="bearer" name="password" autocomplete="current-password">
+
+			<p>Enter the Infomaniak Manager and go to your desiered Mail Service - E-Mail Address. The link should look something like this:<br>
+			<code>https://manager.infomaniak.com/v3/mail/CLIENT_NUMBER/mail-service/MAIL_HOSTING_ID/mailboxes/_MAILBOX_NAME/dashboard/users</code></p>
+
+			<label for="username">MAIL_HOSTING_ID of the desiered domain</label>
+			<input type="text" id="mail_hosting_id" name="username" autocomplete="username">
+		</form>
+
+		<div>
+			<label for="alias_mailbox">MAILBOX_NAME where the aliases should be registered</label>
+			<input type="text" id="alias_mailbox" name="alias_mailbox">
+			<label for="alias_domain">The desiered domain name for aliases<br><small>Normally just the domain name. But this allows to use <a target="_blank" href="https://faq.infomaniak.com/2097">additional domains</a> e.g. subdomains as alias</small></label>
+			<input type="text" id="alias_domain" name="alias_domain">
+			
+			<p><a class="footer_link" href="../info/disclaimer.html">Disclaimer</a> <a class="footer_link" href="../info/contact.html">Contact</a></p>
+		</div>
+		
 		<div class="button_box">
 			<button onclick="updateCookieData()">Save</button>
 			<button onclick="this.parentElement.parentElement.close()">Cancel</button>

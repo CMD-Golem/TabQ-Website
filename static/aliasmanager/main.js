@@ -4,10 +4,8 @@ async function init() {
 	// get cookie data
 	var cookie_not_set = await getCookieData();
 
-	if (cookie_not_set) {
-		document.getElementById("settings").showModal();
-		return;
-	}
+	if (!cookie_not_set) document.getElementById("settings").close();
+	else return;
 
 	// build aliases
 	var active_aliases = new Set(await getAlias());
