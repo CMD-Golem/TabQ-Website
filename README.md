@@ -8,8 +8,8 @@ Quick access to links. Extendable with plugins.
 Read magazines from Migros and Coop.
 
 ## Infomaniak Alias Manager
-The Alias Manager is used to manage email aliases when there is a limited number of available alias addresses, such as with Infomaniak.
-The tool manages a filter on a catch-all address that only allows registered aliases and moves everything else to the spam folder.
+Manage the limited number of Infomaniak email aliases using a catch-all address.
+The tool uses a filter on the catch-all address that only allows registered aliases and moves everything else to the spam folder.
 An alias can then be activated for sending as needed.
 
 | Env | Description | Example |

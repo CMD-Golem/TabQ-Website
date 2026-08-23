@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
+	<meta name="description" content="Manage the limited number of Infomaniak email aliases using a catch-all address">
+	<meta rel="canonical" href="https://tabq.ch/aliasmanager/">
+	<meta name="robots" content="index, follow, archive"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="color-scheme" content="dark only">
 	<title>Infomaniak Alias Manager</title>
@@ -20,7 +23,7 @@
 	</nav>
 	<div id="alias_list"></div>
 	<footer>
-		<input type="text" onkeyup="search(this.value)" id="searchbox" autofocus>
+		<input type="text" onkeyup="search(this.value)" placeholder="Search" id="searchbox" autofocus>
 		<button onclick="clearSearch()" title="Clear search">×</button>
 	</footer>
 	<dialog id="create_alias" closedby="any">
@@ -55,7 +58,7 @@
 			<label for="alias_domain">The desiered domain name for aliases<br><small>Normally just the domain name. But this allows to use <a target="_blank" href="https://faq.infomaniak.com/2097">additional domains</a> e.g. subdomains as alias</small></label>
 			<input type="text" id="alias_domain" name="alias_domain">
 			
-			<p><a class="footer_link" href="../info/disclaimer.html">Disclaimer</a> <a class="footer_link" href="../info/contact.html">Contact</a></p>
+			<p><a class="footer_link" href="./about.html">About</a> <a class="footer_link" href="../info/disclaimer.html">Disclaimer</a> <a class="footer_link" href="../info/contact.html">Contact</a></p>
 		</div>
 		
 		<div class="button_box">

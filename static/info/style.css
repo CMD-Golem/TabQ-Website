@@ -97,13 +97,7 @@ button:hover , button:active, button:focus {
 	justify-content: center;
 	flex-flow: column;
 	margin: 0 auto;
-}
-
-.content_link {
-	padding: 2%;
-	/* flex-basis: 290px; */
-	height: 50px;
-	margin: 10px 0;
+	gap: 15px;
 }
 
 .container {

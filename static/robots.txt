@@ -1,3 +1,5 @@
 User-agent: *
 Disallow: /info/
 Disallow: /404.html
+
+Sitemap: https://tabq.ch/sitemap.xml

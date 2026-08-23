@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
+	<meta name="description" content="Manage the limited number of Infomaniak email aliases using a catch-all address">
+	<meta rel="canonical" href="https://tabq.ch/aliasmanager/about.html">
+	<meta name="robots" content="index, follow, archive"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="color-scheme" content="dark only">
 	<title>TabQ - About Infomaniak Alias Manager</title>
@@ -16,11 +19,20 @@
 
 	<main>
 		<h1>Infomaniak Alias Manager</h1>
-		<p>The Alias Manager allows you to use an unlimited number of email aliases with Infomaniak, since the <a target="_blank" href="https://faq.infomaniak.com/2129">default limit is 50</a>.</p>
+		<p>The Alias Manager allows you to use an unlimited number of email aliases with Infomaniak, since the <a target="_blank" href="https://faq.infomaniak.com/2129">limit is 50</a>.</p>
 		<p>The Manager uses a <a target="_blank" href="https://faq.infomaniak.com/126">catch-all address</a> to receive mails for all aliases. To prevent spam, a mail filter is used that only allows emails addressed to registered aliases to pass through. Emails sent to addresses not specified in the Manager are automatically moved into the spam folder.</p>
-		<p>New aliases can initially be added only to the filter. Using a toggle, aliases can be created as actual aliases with Infomaniak as needed and can thus also be used for sending emails.</p>
+		<p>New aliases are initially added only to the filter. Using a toggle, aliases can be created as actual aliases with Infomaniak as needed and can thus also be used for sending emails.</p>
 
 		<p>The manager stores everything locally and encrypted in a cookie. The backend (<a target="_blank" href="https://github.com/CMD-Golem/TabQ-Website/blob/main/src/aliasmanager.rs">source</a>) is just used to connect to the Infomaniak API and no data is stored.</p>
+		<p><a href="./">Check the Infomaniak Alias Manager out</a></p>
+
+		<img src="./overview.png" style="width: 100%;">
+
+		<p>As described on <a target="_blank" href="https://faq.infomaniak.com/126">Infomaniaks catch-all support page</a>, catch-all addresses and therefore also this page are supported only by the following products. All of these products currently require a paid subscription.</p>
+		<ul>
+			<li>kSuite Pro Standard, Business and Enterprise</li>
+			<li>Mail-Service (not the free Starter)</li>
+		</ul>
 
 		<p><a href="./">Check the Infomaniak Alias Manager out</a></p>
 	</main>

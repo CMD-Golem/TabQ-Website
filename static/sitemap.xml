@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"
+ xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="https://www.sitemaps.org/schemas/sitemap/0.9 https://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+<url>
+  <loc>https://tabq.ch/</loc>
+  <lastmod>2026-08-23T16:00:00+00:00</lastmod>
+  <priority>1.00</priority>
+</url>
+<url>
+  <loc>https://tabq.ch/aliasmanager/</loc>
+  <lastmod>2026-08-23T16:00:00+00:00</lastmod>
+  <priority>0.8</priority>
+</url>
+<url>
+  <loc>https://tabq.ch/aliasmanager/about.html</loc>
+  <lastmod>2026-08-23T16:00:00+00:00</lastmod>
+  <priority>0.8</priority>
+</url>
+<url>
+  <loc>https://tabq.ch/blog/csv_to_sn-spreadsheet.html</loc>
+  <lastmod>2026-08-23T16:00:00+00:00</lastmod>
+  <priority>0.8</priority>
+</url>
+<url>
+  <loc>https://tabq.ch/blog/what_is_tabq.html</loc>
+  <lastmod>2026-08-23T16:00:00+00:00</lastmod>
+  <priority>0.3</priority>
+</url>
+
+</urlset>
